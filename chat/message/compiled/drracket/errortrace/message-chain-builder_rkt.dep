@@ -1,0 +1,1 @@
+("8.3" ta6osx ("05a75e4379bcbf5fd90a8215f6ae419a1b318943" . "eb1b3404e907a74c847f4828a692d0de04bc4a5b") #"/Users/hulang/Documents/workspace/chat-bot/message/./message.rkt" (collects #"errortrace" #"errortrace-key.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))
