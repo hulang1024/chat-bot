@@ -1,7 +1,7 @@
 #lang racket
 
 (require "contact.rkt"
-         "../message/message-send.rkt")
+         "message-send.rkt")
 
 (provide group%
          group-member%)
@@ -11,23 +11,24 @@
   (class contact%
     (super-new)
 
-    (inherit-field bot
-                   id)
+    (init-field name)
+
+    (define/public (get-name) name)
 
     (define/override (send-message message)
-      (send-group-message #:bot bot
-                          #:target id
+      (send-group-message #:group this
                           #:message message))))
+
 
 (define group-member%
   (class contact%
     (super-new)
 
-    (inherit-field bot
-                   id
-                   group)
-
+    (init-field group member-name special-title)
+    
     (define/public (get-group) group)
+    (define/public (get-member-name) member-name)
+    (define/public (get-special-title) special-title)
 
     (define/override (send-message message)
       (error "暂未实现"))))

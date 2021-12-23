@@ -1,8 +1,9 @@
 #lang racket
-(require "./message.rkt")
+(require "message.rkt"
+         "message-chain.rkt")
 
-
-(provide message-chain-builder%)
+(provide message-chain-builder%
+         make-quote-reply)
 
 
 (define message-chain-builder%
@@ -16,7 +17,17 @@
 
     (define/public (build)
       (define message-chain (new message-chain%))
-      (for-each (λ (m) (send message-chain add m))
+      (for-each (λ (m)
+                  (send message-chain add m))
                 lst)
       message-chain)))
-      
+
+
+(define (make-quote-reply source-message)
+  (cond
+    [(is-a? source-message message-chain%)
+     (define source (send source-message get source%))
+     (define id (send source get-id))
+     (new quote%
+       [id id]
+       [origin source-message])]))

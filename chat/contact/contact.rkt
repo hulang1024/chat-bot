@@ -10,4 +10,7 @@
     (init-field bot
                 id)
 
+    (define/public (get-id) id)
+    (define/public (get-bot) bot)
+
     (abstract send-message)))

@@ -2,25 +2,52 @@
 
 ;;; 与mirai-http-api通信的ws客户端
 
-(require net/rfc6455
+(require racket/match
+         net/rfc6455
          net/url
          json)
 
 
-(provide
- ; 连接
- (rename connect client-connect))
+(provide client-connect
+         client-send-command)
 
-
-(define (connect #:config config #:on-message-channel-data on-message-channel-data)
+(define (client-connect #:config config
+                        #:debug-mode debug-mode
+                        #:on-connected on-connected
+                        #:on-message-channel-data on-message-channel-data)
   (define url (string->url (format "ws://localhost:~a/message"
                                    (hash-ref config 'port))))
   (define conn (ws-connect url))
   (let loop ()
     (define raw (ws-recv conn))
     (unless (eof-object? raw)
-      (printf "raw message: ~a\n" raw)
+      (when debug-mode
+        (printf "<- ~a\n" raw))
       (let* ([raw (string->jsexpr raw)]
+             [syncId (hash-ref raw 'syncId)]
              [data (hash-ref raw 'data)])
-        (on-message-channel-data data))
+        (cond
+          [(string=? syncId "")
+           (when (= (hash-ref data 'code) 0)
+             (on-connected conn))]
+          [(hash-has-key? data 'msg)
+           (match-define (hash-table ('msg msg)) data)
+           (displayln msg)]
+          [else
+           (on-message-channel-data data)]))
       (loop))))
+
+(define (client-send-command conn send-data)
+  (define command (hash-ref send-data 'command))
+  (hash-set! send-data 'syncId (format "~a-~a" command (new-sync-id command)))
+  (define json (jsexpr->string send-data))
+  (ws-send! conn json)
+  json)
+
+
+(define command-sync-ids (make-hash))
+
+(define (new-sync-id command)
+  (define sync-id (+ (hash-ref! command-sync-ids command 0) 1))
+  (hash-set! command-sync-ids command sync-id)
+  sync-id)

@@ -1,23 +1,29 @@
 #lang racket
 
 (require "config.rkt"
+         "chat/event/message-event.rkt"
          "chat/bot.rkt"
-         "chat/event/message-event.rkt")
+         "chat/message/main.rkt")
 
 
 (displayln "Started")
 
-(define (on-message-event event)
-  (define sender (message-event-sender event))
-  (define subject (message-event-subject event))
-  (define message-chain (message-event-message event))
+(define bot (new bot%
+                 [server-config mirai-ws-server-config]
+                 [verbose #t]))
 
-  (displayln sender)
-  (displayln subject)
-  (displayln message-chain)
+(send bot subscribe-message-event
+      (λ (event)
+        (define subject (send event get-subject))
+        (define mcb (new message-chain-builder%))
+        ; (send mcb add (make-quote-reply (send event get-message)))
+        (send mcb add "abc")
+        (send mcb add (new dice-message% [value 6]))
+        (send mcb add "hhh")
 
-  (send subject send-message "hi1222"))
+        (send subject send-message (send mcb build))))
 
-
-(define bot (new bot% [server-config mirai-ws-server-config]))
-(send bot subscribe-message-event on-message-event)
+(displayln "连接中...")
+(send bot login
+      (λ ()
+        (displayln "已连接到服务器:)")))
