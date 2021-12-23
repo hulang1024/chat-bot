@@ -14,21 +14,24 @@
       (set! js-array-expr (append js-array-expr (list jsexpr)))))
   js-array-expr)
 
-(define (encode-message m)
-  (match (object-name m)
-    ['object:plain% (encode-plain m)]
-    ['object:quote% #f] ; 不使用，已在发送消息命令的参数中
-    ['object:at% (encode-at m)]
-    ['object:at-all% (encode-at-all m)]
-    ['object:face% (encode-face m)]
-    ['object:image-message% (encode-image-message m)]
-    ['object:flash-image-message% (encode-flash-image-message m)]
-    ['object:voice-message% (encode-voice-message m)]
-    ['object:music-share% (encode-music-share m)]
-    ['object:poke-message% (encode-poke-message m)]
-    ['object:app-message% (encode-app-message m)]
-    ['object:dice-message% (encode-dice-message m)]
-    [_ #f]))
+
+(define (encode-message message)
+  (define encode
+    (match (object-name message)
+      ['object:plain% encode-plain]
+      ['object:quote% #f] ; 不使用，已在发送消息命令的参数中
+      ['object:at% encode-at]
+      ['object:at-all% encode-at-all]
+      ['object:face% encode-face]
+      ['object:image-message% encode-image-message]
+      ['object:flash-image-message% encode-flash-image-message]
+      ['object:voice-message% encode-voice-message]
+      ['object:music-share% encode-music-share]
+      ['object:poke-message% encode-poke-message]
+      ['object:app-message% encode-app-message]
+      ['object:dice-message% encode-dice-message]
+      [_ #f]))
+  (if encode (encode message) #f))
 
 
 (define (json-null-if v)

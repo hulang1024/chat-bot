@@ -3,6 +3,7 @@
          "message-chain.rkt")
 
 (provide message-chain-builder%
+         create-add-message
          make-quote-reply)
 
 
@@ -21,6 +22,11 @@
                   (send message-chain add m))
                 lst)
       message-chain)))
+
+
+(define (create-add-message mcb)
+  (λ (m)
+    (send mcb add m)))
 
 
 (define (make-quote-reply source-message)

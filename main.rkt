@@ -3,7 +3,8 @@
 (require "config.rkt"
          "chat/event/message-event.rkt"
          "chat/bot.rkt"
-         "chat/message/main.rkt")
+         "chat/message/main.rkt"
+         "func-lib/cmdline-message-handler.rkt")
 
 
 (displayln "Started")
@@ -16,12 +17,13 @@
       (λ (event)
         (define subject (send event get-subject))
         (define mcb (new message-chain-builder%))
-        ; (send mcb add (make-quote-reply (send event get-message)))
-        (send mcb add "abc")
-        (send mcb add (new dice-message% [value 6]))
-        (send mcb add "hhh")
+        (define add-message (create-add-message mcb))
 
-        (send subject send-message (send mcb build))))
+        (define handled (handle-cmdline-message (send event get-message)
+                                                (send event get-sender)
+                                                add-message))
+        (when handled
+          (send subject send-message (send mcb build)))))
 
 (displayln "连接中...")
 (send bot login

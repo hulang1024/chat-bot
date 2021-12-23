@@ -16,17 +16,19 @@
 
 (define (decode-message jsexpr)
   (define type (hash-ref jsexpr 'type))
-  (match type
-    ["Source" (decode-source jsexpr)]
-    ["Plain" (decode-plain jsexpr)]
-    ["Quote" (decode-quote jsexpr)]
-    ["At" (decode-at jsexpr)]
-    ["AtAll" (decode-at-all jsexpr)]
-    ["Face" (decode-face jsexpr)]
-    ["Image" (decode-image jsexpr)]
-    ["FlashImage" (decode-flash-image jsexpr)]
-    ["Voice" (decode-voice-message jsexpr)]
-    [_ #f]))
+  (define decode
+    (match type
+      ["Source" decode-source]
+      ["Plain" decode-plain]
+      ["Quote" decode-quote]
+      ["At" decode-at]
+      ["AtAll" decode-at-all]
+      ["Face" decode-face]
+      ["Image" decode-image]
+      ["FlashImage" decode-flash-image]
+      ["Voice" decode-voice-message]
+      [_ #f]))
+  (if decode (decode jsexpr) #f))
 
 
 (define (decode-source jsexpr)
