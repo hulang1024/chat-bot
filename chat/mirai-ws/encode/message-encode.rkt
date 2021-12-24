@@ -34,10 +34,6 @@
   (if encode (encode message) #f))
 
 
-(define (json-null-if v)
-  (if v v (json-null)))
-
-
 (define (encode-plain m)
   (hash 'type "Plain"
         'text (send m get-text)))
@@ -69,23 +65,23 @@
 
 (define (encode-image-message m)
   (hash 'type "Image"
-        'imageId (json-null-if (send m get-id))
-        'url (json-null-if (send m get-url))
-        'path (json-null-if (send m get-path))))
+        'imageId (null-ifnot (send m get-id))
+        'url (encode-url (null-ifnot (send m get-url)))
+        'path (null-ifnot (send m get-path))))
 
 
 (define (encode-flash-image-message m)
   (hash 'type "FlashImage"
-        'imageId (json-null-if (send m get-id))
-        'url (json-null-if (send m get-url))
-        'path (json-null-if (send m get-path))))
+        'imageId (null-ifnot (send m get-id))
+        'url (encode-url (null-ifnot (send m get-url)))
+        'path (null-ifnot (send m get-path))))
 
 
 (define (encode-voice-message m)
   (hash 'type "Voice"
-        'voiceId (json-null-if (send m get-id))
-        'url (json-null-if (send m get-url))
-        'path (json-null-if (send m get-path))))
+        'voiceId (null-ifnot (send m get-id))
+        'url (encode-url (null-ifnot (send m get-url)))
+        'path (null-ifnot (send m get-path))))
 
 
 (define (encode-poke-message m)
@@ -107,8 +103,15 @@
   (hash 'type "MusicShare"
         'kind (send m get-kind)
         'title (send m get-title)
-        'jump-url (send m get-jump-url)
-        'picture-url (send m get-picture-url)
-        'music-url (send m get-music-url)
+        'jump-url (encode-url (send m get-jump-url))
+        'picture-url (encode-url (send m get-picture-url))
+        'music-url (encode-url (send m get-music-url))
         'summary (send m get-summary)
         'brief (send m get-brief)))
+
+
+(define (null-ifnot v)
+  (if v v (json-null)))
+
+(define (encode-url url)
+  (string-replace url " " "%20"))

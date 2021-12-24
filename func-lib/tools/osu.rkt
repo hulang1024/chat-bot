@@ -2,7 +2,7 @@
 (require "../utils/text-util.rkt")
 
 (provide osu-menu
-         osu-stat-user
+         osu-stat
          sender-bind-to-osu-user)
 
 
@@ -97,35 +97,44 @@
         count300 count100 count50
         count_rank_ss count_rank_s count_rank_a))
 
-    (define/public (query-osu-user osu-uid mode displayln)
+    (define/public (query-osu-user osu-uid mode display)
       (define result (get-user #:u osu-uid #:mode mode))
       (if (not (null? result))
           (let ([result (list-ref result 0)])
-            (displayln (string-append "模式：" (hash-ref mode-name-hash mode)))
+            (display (string-append "模式：" (hash-ref mode-name-hash mode) "\n"))
             (for ([key display-orderedy-keys])
               (when (and (hash-has-key? result key)
                          (hash-has-key? display-result-key-zh-hash key))
                 (let ([title (hash-ref display-result-key-zh-hash key)]
                       [text (hash-ref result key)])
-                  (displayln (string-append
+                  (display (string-append
                               title
                               (build-string (- 14 (text-width title)) (λ (n) #\space))
-                              text))))))
+                              text
+                              "\n"))))))
           #f))))
           
 
 (define osu-user-manager (new osu-user-manager%))
 
-(define (osu-stat-user mode osu-uid sender-id add-message)
+(define mode-names '("osu" "taiko" "ctb" "mania"))
+
+(define (osu-stat mode-name osu-uid sender-id add-message)
+  (define mode (match mode-name ["osu" 0] ["taiko" 1] ["ctb" 2] ["mania" 3] [_ #f]))
   (cond
+    [(not mode)
+     (add-message (string-append "第一个参数只可以写以下文字：" (string-join mode-names " ")))]
     [(false? osu-uid)
      (if (send osu-user-manager has-binding? sender-id)
-         (osu-stat-user (send osu-user-manager get-osu-user-id sender-id))
+         (osu-stat mode-name
+                   (send osu-user-manager get-osu-user-id sender-id)
+                   sender-id
+                   add-message)
          (add-message "请先发送:\n设置osu用户 你的osu用户名或id\n"))]
     [else 
-     (define found (send osu-user-manager query-osu-user osu-uid mode))
+     (define found (send osu-user-manager query-osu-user osu-uid mode add-message))
      (when (not found)
-       (printf "未找到osu用户 ~a\n" osu-uid))]))
+       (add-message "未找到osu用户 ~a\n" osu-uid))]))
 
 
 (define (sender-bind-to-osu-user sender-id osu-uid add-message)
@@ -135,11 +144,11 @@
 
 (define (osu-menu display)
   (display "osu命令菜单\n========\n")
-  (let ([modes '(osu taiko ctb mania)])
-    (display "自己的分数统计\n")
-    (display "\t设置osu用户 你的osu用户名或id\n")
-    (for ([mode modes])
-      (display (format "\t~A-stat\n" (symbol->string mode))))
-    (display "别人的分数统计\n")
-    (for ([mode modes])
-      (display (format "\t~A-stat osu用户名或id\n" (symbol->string mode))))))
+  (define m-names `("" ,@(cdr mode-names)))
+  (display "自己的分数统计\n")
+  (display "\t设置osu用户 你的osu用户名或id\n")
+  (for ([mode m-names])
+    (display (format "\tosu-stat ~A\n" mode)))
+  (display "别人的分数统计\n")
+  (for ([mode m-names])
+    (display (format "\tosu-stat ~A osu用户名或id\n" mode))))

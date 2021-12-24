@@ -27,7 +27,24 @@
 
     (define/public (empty?) (null? lst))
 
-    (define/public (content-to-string) (void))))
+    (define/public (trim)
+      (define left (if (is-a? (list-ref lst 0) source%)
+                       (list-ref lst 1)
+                       (list-ref lst 0)))
+      (define right (last lst))
+
+      (when (is-a? left plain%)
+        (define trimmed (string-trim (send left get-text) #:right? #f))
+        (send left set-text trimmed))
+      (when (is-a? right plain%)
+        (define trimmed (string-trim (send right get-text) #:left? #f))
+        (send right set-text trimmed))
+      this)
+
+    (define/public (content-to-string)
+      (define strs (filter (compose not false?)
+                           (map (λ (m) (send m content-to-string)) lst)))
+      (string-join strs ""))))
 
 
 (define (as-message-chain message)

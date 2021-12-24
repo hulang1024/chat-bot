@@ -27,14 +27,17 @@
              [syncId (hash-ref raw 'syncId)]
              [data (hash-ref raw 'data)])
         (cond
+          ; 连接成功
           [(string=? syncId "")
            (when (= (hash-ref data 'code) 0)
              (on-connected conn))]
-          [(hash-has-key? data 'msg)
+          ; 服务端主动发起的
+          [(string=? syncId "-1")
+           (on-message-channel-data data)]
+          ; 请求响应
+          [debug-mode
            (match-define (hash-table ('msg msg)) data)
-           (displayln msg)]
-          [else
-           (on-message-channel-data data)]))
+           (printf "server msg: ~a\n" msg)]))
       (loop))))
 
 (define (client-send-command conn send-data)

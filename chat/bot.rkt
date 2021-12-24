@@ -9,7 +9,9 @@
   (class object%
     (super-new)
 
-    (init-field server-config verbose)
+    (init-field server-config
+                [verbose #f]
+                [client-debug #f])
 
     (define client-conn #f)
     (define message-event-handler #f)
@@ -19,7 +21,7 @@
     (define/public (login on-ok)
       (set! client-conn
             (client-connect #:config server-config
-                            #:debug-mode #t
+                            #:debug-mode client-debug
                             #:on-connected (on-connected on-ok)
                             #:on-message-channel-data on-message-channel-data)))
 

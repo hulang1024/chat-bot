@@ -1,8 +1,10 @@
 #lang racket
 (require net/url
-         json)
+         json
+         "citys.rkt")
 
-(provide query-weather)
+(provide query-weather
+         query-weather-parse-args-from-text)
 
 
 (define weather-icons
@@ -25,7 +27,7 @@
   
 (define api-key "YK6GIIA0EB")
 
-(define (query-weather location add-message)
+(define (query-weather location spec-rel-date add-message)
   (define (create-url location days)
     (string->url (format "https://api.seniverse.com/v3/weather/daily.json?location=~A&language=~A&unit=c&start=0&days=~A&key=~A"
                          location "zh-Hans" days api-key)))
@@ -33,27 +35,57 @@
   (define-values (status headers in)
     (http-sendrecv/url (create-url location 3)))
   (define api-result (string->jsexpr (port->string in)))
-  (if (hash-has-key? api-result 'results)
-      (let ([result (list-ref (hash-ref api-result 'results) 0)]
-            [rel-dates '("今天" "明天" "后天")]
-            [i 0])
-        (add-message (format "~A的天气\n" location))
-        (for ((day (hash-ref result 'daily)))
-          (add-message (format "~A：~A ~A，晚间~A~A，~A ~~ ~A°C，~A风~A级(风速~Akm/h)\n"
-                               (if (< i 3)
-                                   (list-ref rel-dates i)
-                                   (hash-ref day 'date))
-                               (get-icon (hash-ref day 'code_day))
-                               (hash-ref day 'text_day)
-                               (get-icon (hash-ref day 'code_night))
-                               (hash-ref day 'text_night)
-                               (hash-ref day 'low)
-                               (hash-ref day 'high)
-                               (hash-ref day 'wind_direction)
-                               (hash-ref day 'wind_scale)
-                               (hash-ref day 'wind_speed)))
-          (set! i (+ i 1)))
-        #t)
-      (begin
-        (add-message (format "未查询到位置 ~A 的天气\n" location))
-        #f)))
+  (cond
+    [(hash-has-key? api-result 'results)
+     (define (day-line day prefix)
+       (add-message (format "~A~A ~A，晚间~A~A，~A ~~ ~A°C，~A风~A级(风速~Akm/h)\n"
+                            prefix
+                            (get-icon (hash-ref day 'code_day))
+                            (hash-ref day 'text_day)
+                            (get-icon (hash-ref day 'code_night))
+                            (hash-ref day 'text_night)
+                            (hash-ref day 'low)
+                            (hash-ref day 'high)
+                            (hash-ref day 'wind_direction)
+                            (hash-ref day 'wind_scale)
+                            (hash-ref day 'wind_speed))))
+     
+     (define rel-dates '("今天" "明天" "后天"))
+
+     (add-message (format "~A的天气\n"
+                          (if spec-rel-date
+                              (format "~a~a" location (list-ref rel-dates spec-rel-date))
+                              location)))
+     (define result (list-ref (hash-ref api-result 'results) 0))
+     (define daily (hash-ref result 'daily))
+     (cond
+       [spec-rel-date
+        (day-line (list-ref daily spec-rel-date) "")]
+       [else 
+        (define i (if spec-rel-date date 0))
+        (for ((day daily))
+          (day-line day
+                    (string-append
+                     (if (< i 3)
+                         (list-ref rel-dates i)
+                         (hash-ref day 'date))
+                     "："))
+          (set! i (+ i 1)))])
+     #t]
+    [else
+     (add-message (format "未查询到位置 ~A 的天气\n" location))
+     #f]))
+
+
+(define (query-weather-parse-args-from-text text)
+  (define re #rx".+的?([今明后]天的)?天气$")
+  (cond
+    [(regexp-match? re text)
+     (define city (findf (λ (city) (string-contains? text (symbol->string city)))
+                         (city-names)))
+     (define day-names '("今天" "明天" "后天"))
+     (define day-name (findf (λ (d) (string-contains? text d))
+                             day-names))
+     (define day (match day-name ["今天" 0] ["明天" 1] ["后天" 2] [_ #f]))
+     (list city day)]
+    [else #f]))

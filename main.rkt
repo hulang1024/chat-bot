@@ -11,7 +11,8 @@
 
 (define bot (new bot%
                  [server-config mirai-ws-server-config]
-                 [verbose #t]))
+                 [verbose #t]
+                 [client-debug #t]))
 
 (send bot subscribe-message-event
       (λ (event)
@@ -23,7 +24,9 @@
                                                 (send event get-sender)
                                                 add-message))
         (when handled
-          (send subject send-message (send mcb build)))))
+          (define mc (send mcb build))
+          (when (not (send mc empty?))
+            (send subject send-message (send mc trim))))))
 
 (displayln "连接中...")
 (send bot login

@@ -21,7 +21,7 @@
     (define/public (get-id) id)
     (define/public (get-time) time)
     
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) #f)))
 
 
 (define plain%
@@ -31,6 +31,7 @@
     (init-field text)
 
     (define/public (get-text) text)
+    (define/public (set-text str) (set! text str))
 
     (define/public (content-to-string) text)))
 
@@ -51,7 +52,7 @@
     (define/public (get-target-id) target-id)
     (define/public (get-origin) origin)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) #f)))
 
 
 (define at%
@@ -62,14 +63,14 @@
 
     (define/public (get-target) target)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) (format "@~a" target))))
 
 
 (define at-all%
   (class* object% (single-message<%>)
     (super-new)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) "@全体成员")))
 
 
 (define face%
@@ -81,7 +82,7 @@
     (define/public (get-id) id)
     (define/public (get-name) name)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) (format "[~a]" name))))
 
 
 (define image-message%
@@ -96,26 +97,31 @@
     (define/public (get-url) url)
     (define/public (get-path) path)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) "[图片]")))
 
 
 (define flash-image-message%
   (class image-message%
     (super-new)
 
-    (define/override (content-to-string) "")))
+    (define/override (content-to-string) "[闪照]")))
 
 
 (define voice-message%
   (class* object% (single-message<%>)
     (super-new)
 
-    (init-field [id #f]
+    (init-field [id ""]
                 [url #f]
                 [path #f]
                 [length #f])
+
+    (define/public (get-id) id)
+    (define/public (get-url) url)
+    (define/public (get-path) path)
+    (define/public (get-length) length)
     
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) "[语音消息]")))
 
 
 (define app-message%
@@ -126,7 +132,7 @@
 
     (define/public (get-content) content)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) content)))
 
 
 (define poke-message%
@@ -137,7 +143,7 @@
 
     (define/public (get-name) name)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) "[戳一戳]")))
 
 
 (define dice-message%
@@ -148,7 +154,7 @@
 
     (define/public (get-value) value)
 
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) (format "[骰子:~a]" value))))
 
 
 (define music-share%
@@ -171,4 +177,4 @@
     (define/public (get-summary) summary)
     (define/public (get-brief) brief)
     
-    (define/public (content-to-string) "")))
+    (define/public (content-to-string) (format "[分享]~a" title))))
