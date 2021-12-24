@@ -1,18 +1,30 @@
 #lang racket
 
-(require "config.rkt"
+(require racket/cmdline
+         "config.rkt"
          "chat/event/message-event.rkt"
          "chat/bot.rkt"
          "chat/message/main.rkt"
          "func-lib/cmdline-message-handler.rkt")
 
 
+(define verbose-mode (make-parameter #f))
+(define debug-mode (make-parameter #f))
+
+(command-line #:once-each
+              [("-v" "--verbose")
+               "日志"
+               (verbose-mode #t)]
+              [("-d" "--debug")
+               "调试日志"
+               (debug-mode #t)])
+
 (displayln "Started")
 
 (define bot (new bot%
                  [server-config mirai-ws-server-config]
-                 [verbose #t]
-                 [client-debug #t]))
+                 [verbose (verbose-mode)]
+                 [client-debug (debug-mode)]))
 
 (send bot subscribe-message-event
       (λ (event)

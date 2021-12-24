@@ -38,8 +38,6 @@
     (define (on-message-channel-data data)
       (define message-event (decode-message-event data this))
       (when message-event
-        (when verbose
-          (displayln message-event))
         (emit-message-event-handlers message-event)))
 
     (define (emit-message-event-handlers event)
