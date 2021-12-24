@@ -3,6 +3,7 @@
          json
          "../message/main.rkt"
          "../mirai-ws/client.rkt"
+         "../mirai-ws/command.rkt"
          "../mirai-ws/encode/message-encode.rkt")
 
 (provide send-group-message
@@ -23,27 +24,20 @@
   (define target (send subject get-id))
   (define message-chain (as-message-chain message))
 
-  (define command (make-hash `((target . ,target)
+  (define content (make-hash `((target . ,target)
                                (messageChain . ,(encode-message-chain message-chain)))))
 
   (define quote-m (send message-chain get quote%))
   (when quote-m
-    (hash-set! command 'quote (send quote-m get-id)))
+    (hash-set! content 'quote (send quote-m get-id)))
   
-  (define type (if (equal? (object-name subject) 'object:group%)
-                   'sendGroupMessage
-                   'sendFriendMessage))
-  
-  (send-command (send subject get-bot) type command))
+  (define command (if (equal? (object-name subject) 'object:group%)
+                      "sendGroupMessage"
+                      "sendFriendMessage"))
 
-
-(define (send-command bot type content)
-  (define command (make-hash `((command . ,(symbol->string type))
-                               (subCommand . ,(json-null))
-                               (content . ,content))))
+  (define bot (send subject get-bot))
   (define conn (send bot get-client-connection))
-  (define command-json (client-send-command conn command))
+  (define command-json (client-send-command! conn command #:content content))
   (when (send bot verbose?)
-    (define command-json (jsexpr->string command))
     (printf "-> ~a\n" command-json)))
       
