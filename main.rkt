@@ -48,5 +48,5 @@
         (displayln "已连接到服务器:)")))
 
 (let loop ()
-  (when (string=? (read-line) "")
+  (unless (equal? (read-line) "")
     (loop)))
