@@ -1,19 +1,19 @@
 #lang racket
-(require "contact.rkt"
+(require "user.rkt"
          "message-send.rkt")
 
 (provide friend%)
 
 
 (define friend%
-  (class contact%
+  (class user%
     (super-new)
 
-    (init-field nickname remark)
+    (init-field nickname [remark ""])
 
-    (define/public (get-nickname) nickname)
     (define/public (get-remark) remark)
 
+    (define/override (get-nickname) nickname)
     (define/override (send-message message)
-      (send-friend-message #:friend this
-                           #:message message))))
+    (send-friend-message #:friend this
+                          #:message message))))

@@ -22,8 +22,9 @@
 
     (define/public (add m)
       (when (string? m)
-        (set! m (new plain% [text m])))
-      (set! lst (append lst (cons m null))))
+        (set! m (if (string=? m "") #f (new plain% [text m]))))
+      (when m
+        (set! lst (append lst (cons m null)))))
 
     (define/public (empty?) (null? lst))
 

@@ -1,7 +1,6 @@
 #lang racket
 (require net/url
-         json
-         srfi/13)
+         json)
 
 (provide get-joke)
 

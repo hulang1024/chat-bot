@@ -4,7 +4,8 @@
 
 (provide message-chain-builder%
          create-add-message
-         make-quote-reply)
+         make-quote-reply
+         face-from-id)
 
 
 (define message-chain-builder%
@@ -37,3 +38,7 @@
      (new quote%
        [id id]
        [origin source-message])]))
+
+
+(define (face-from-id id)
+  (new face% [id id]))

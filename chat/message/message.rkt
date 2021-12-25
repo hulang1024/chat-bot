@@ -77,7 +77,7 @@
   (class* object% (single-message<%>)
     (super-new)
 
-    (init-field id name)
+    (init-field id [name ""])
 
     (define/public (get-id) id)
     (define/public (get-name) name)

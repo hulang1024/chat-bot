@@ -9,4 +9,4 @@
   (class contact%
     (super-new)
 
-    (init-field nickname)))
+    (abstract get-nickname)))
