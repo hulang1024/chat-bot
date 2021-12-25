@@ -31,7 +31,8 @@
 (define (remove-ticker ticker)
   (set! tickers (remove ticker tickers))
   (when (null? tickers)
-    (cancel-timeout! timeout)))
+    (cancel-timeout! timeout)
+    (set! timeout #f)))
 
 (define timer%
   (class object%

@@ -13,12 +13,13 @@
 (define user-remind-timers (make-hash))
 
 (struct remind-time (hour minute second) #:transparent)
+
 (define (format-remind-time time)
   (define sec (remind-time-second time))
   (string-append (format "~a:~a"
                          (remind-time-hour time)
                          (remind-time-minute time))
-                 (if (> sec 0) (string-append ":" sec) "")))
+                 (if (> sec 0) (string-append ":" (number->string sec)) "")))
 
 (define (make-remind/time subject user time thing add-message)
   (define (handle-timeout)
@@ -73,6 +74,7 @@
     [(hash-has-key? user-remind-timers user-id)
      (define timer (hash-ref user-remind-timers user-id))
      (send timer stop)
+     (hash-remove! user-remind-timers user-id)
      #t]
     [else #f]))
 
