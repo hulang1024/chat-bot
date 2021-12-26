@@ -144,11 +144,10 @@
     [(or (list "提醒" "我" time-text content ...)
          (list "提醒" "我" time-text "的" "时候" content ...)
          (list "提醒" time-text content ...))
-     (define parts (string-split time-text "："))
      (cond
-       [(> (length parts) 0)
-        (set! parts (map string->number
-                         (flatten (map (λ (s) (string-split s ":")) parts))))
+       [(regexp-match? #rx"^[0-9]*:?[0-9]*:?[0-9]*$" time-text)
+        (define parts (map string->number (string-split time-text ":")))
+        (and (> (length parts) 0))
         (define hour? (λ (v) (<= 0 v 23)))
         (define t60? (λ (v) (<= 0 v 59)))
         (define times (match parts
@@ -157,20 +156,23 @@
                         [(list (? hour? hour) (? t60? minute) (? t60? second))
                          (list hour minute second)]
                         [_ #f]))
-        (match-define (list hour minute second) times)
-        (define now (current-date))
-        (define time
-          (date->seconds (date second
-                               minute
-                               hour
-                               (date-day now)
-                               (date-month now)
-                               (date-year now)
-                               (date-week-day now)
-                               (date-year-day now)
-                               (date-dst? now)
-                               (date-time-zone-offset now))))
-        (set! content (string-join content ""))
-        (list time content)]
+        (cond
+          [times
+           (match-define (list hour minute second) times)
+           (define now (current-date))
+           (define time
+             (date->seconds (date second
+                                  minute
+                                  hour
+                                  (date-day now)
+                                  (date-month now)
+                                  (date-year now)
+                                  (date-week-day now)
+                                  (date-year-day now)
+                                  (date-dst? now)
+                                  (date-time-zone-offset now))))
+           (set! content (string-join content ""))
+           (list time content)]
+          [else #f])]
        [else #f])]
     [else #f]))
