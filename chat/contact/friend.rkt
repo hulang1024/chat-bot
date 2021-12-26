@@ -9,7 +9,7 @@
   (class user%
     (super-new)
 
-    (init-field nickname [remark ""])
+    (init-field [nickname ""] [remark ""])
 
     (define/public (get-remark) remark)
 

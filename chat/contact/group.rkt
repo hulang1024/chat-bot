@@ -12,7 +12,7 @@
   (class contact%
     (super-new)
 
-    (init-field name)
+    (init-field [name ""])
 
     (define/public (get-name) name)
 
