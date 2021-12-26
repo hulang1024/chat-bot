@@ -1,10 +1,10 @@
 #lang racket
 (require net/url
          json
-         "citys.rkt")
+         "../../data/citys.rkt")
 
 (provide query-weather
-         query-weather-parse-args-from-text)
+         query-weather-parse-args)
 
 
 (define weather-icons
@@ -77,15 +77,12 @@
      #f]))
 
 
-(define (query-weather-parse-args-from-text text)
-  (define re #rx".+的?([今明后]天的)?天气$")
-  (cond
-    [(regexp-match? re text)
-     (define city (findf (λ (city) (string-contains? text (symbol->string city)))
-                         (city-names)))
-     (define day-names '("今天" "明天" "后天"))
-     (define day-name (findf (λ (d) (string-contains? text d))
-                             day-names))
+(define (query-weather-parse-args words)
+  (match words
+    [(list city (or "今天" "明天" "后天") (or "的天气" "天气"))
+     (define day-name (list-ref words 1))
      (define day (match day-name ["今天" 0] ["明天" 1] ["后天" 2] [_ #f]))
      (list city day)]
+    [(list city "天气")
+     (list city 0)]
     [else #f]))

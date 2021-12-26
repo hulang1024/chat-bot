@@ -6,7 +6,8 @@
          "chat/bot.rkt"
          "chat/message/main.rkt"
          "eval-service/main.rkt"
-         "func-lib/message-handler.rkt")
+         "func-lib/message-handler.rkt"
+         "func-lib/login-handler.rkt")
 
 
 (define verbose-mode (make-parameter #f))
@@ -45,8 +46,5 @@
 (displayln "连接中...")
 (send bot login
       (λ ()
-        (displayln "已连接到服务器:)")))
-
-(let loop ()
-  (unless (equal? (read-line) "")
-    (loop)))
+        (displayln "已连接到服务器:)")
+        (handle-login bot)))

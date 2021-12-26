@@ -3,7 +3,7 @@
 (provide city-names)
 
 
-(define (city-names)
+(define city-names
   '(上海
     东莞
     东营
