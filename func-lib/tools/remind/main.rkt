@@ -143,7 +143,8 @@
   (match words
     [(or (list "提醒" "我" time-text content ...)
          (list "提醒" "我" time-text "的" "时候" content ...)
-         (list "提醒" time-text content ...))
+         (list "提醒" time-text content ...)
+         (list time-text "提醒" "我" content ...))
      (cond
        [(regexp-match? #rx"^[0-9]*:?[0-9]*:?[0-9]*$" time-text)
         (define parts (map string->number (string-split time-text ":")))

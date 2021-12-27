@@ -20,19 +20,19 @@
   (define words (cut-words m-str))
 
   (match words
-    [(app query-weather-parse-args (? list? ret))
-     (apply query-weather `(,@ret ,add-message))]
-    [(list "动漫" "图片")
+    [(app query-weather-parse-args (? list? args))
+     (apply query-weather `(,@args ,add-message))]
+    [(list "动漫" (or "图" "图片"))
      (get-random-pic "anime" add-message)]
-    [(list "风景" "图片")
+    [(list "风景" (or "图" "图片"))
      (get-random-pic "scenery" add-message)]
-    [(list "妹子" "图片")
+    [(list "妹子" (or "图" "图片"))
      (get-random-pic "mm" add-message)]
-    [(list "图片")
+    [(list (or "图" "图片"))
      (get-random-pic "all" add-message)]
 
-    [(app remind-parse-args (? list? ret))
-     (apply make-remind `(,subject ,sender ,@ret ,add-message))]
+    [(app remind-parse-args (? list? args))
+     (apply make-remind `(,subject ,sender ,@args ,add-message))]
     [(list "取消" "提醒")
      (cancel-remind sender add-message)]
      

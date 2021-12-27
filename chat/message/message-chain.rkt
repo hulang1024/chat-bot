@@ -10,6 +10,7 @@
     (super-new)
 
     (define lst null)
+    (define content-string null)
 
     (define/public (to-list) lst)
 
@@ -24,7 +25,8 @@
       (when (string? m)
         (set! m (if (string=? m "") #f (new plain% [text m]))))
       (when m
-        (set! lst (append lst (cons m null)))))
+        (set! lst (append lst (cons m null)))
+        (set! content-string null)))
 
     (define/public (empty?) (null? lst))
 
@@ -43,9 +45,11 @@
       this)
 
     (define/public (content-to-string)
-      (define strs (filter (compose not false?)
-                           (map (λ (m) (send m content-to-string)) lst)))
-      (string-join strs ""))))
+      (when (null? content-string) 
+        (define strs (filter (compose not false?)
+                             (map (λ (m) (send m content-to-string)) lst)))
+        (set! content-string (string-join strs "")))
+      content-string)
 
 
 (define (as-message-chain message)

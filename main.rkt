@@ -34,14 +34,15 @@
         (define mcb (new message-chain-builder%))
         (define add-message (create-add-message mcb))
 
-        (define handled (handle-message bot event add-message))
-        (when (not handled)
-          (set! handled (handle-eval-service-message event add-message)))
-        
-        (when handled
-          (define mc (send mcb build))
-          (when (not (send mc empty?))
-            (send subject send-message (send mc trim))))))
+        (define message (send event get-message))
+        (when (non-empty-string? (send message content-to-string))
+          (define handled (handle-message bot event add-message))
+          (when (not handled)
+            (set! handled (handle-eval-service-message event add-message)))
+          (when handled
+            (define mc (send mcb build))
+            (when (not (send mc empty?))
+              (send subject send-message (send mc trim)))))))
 
 (displayln "连接中...")
 (send bot login
