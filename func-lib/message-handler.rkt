@@ -1,5 +1,6 @@
 #lang racket
-(require "../nlp/cut-word.rkt"
+(require "../chat/message/main.rkt"
+         "../nlp/cut-word.rkt"
          "tools/weather.rkt"
          "tools/pic.rkt"
          "tools/joke.rkt"
@@ -31,8 +32,8 @@
     [(list (or "图" "图片"))
      (get-random-pic "all" add-message)]
 
-    [(app remind-parse-args (? list? args))
-     (apply make-remind `(,subject ,sender ,@args ,add-message))]
+    [(app (remind-parse-args sender) (? list? args))
+     (apply make-remind `(,subject ,@args ,add-message))]
     [(list "取消" "提醒")
      (cancel-remind sender add-message)]
      
@@ -42,9 +43,9 @@
      (random-dice add-message)]
     
     [(list "美音" args ...)
-     (dict-a-voice (string-join args " ") add-message)]
+     (dict-a-voice (string-join args "") add-message)]
     [(list "英音" args ...)
-     (dict-b-voice (string-join args " ") add-message)]
+     (dict-b-voice (string-join args "") add-message)]
 
     ; osu
     [(list "osu" "菜单")

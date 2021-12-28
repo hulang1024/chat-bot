@@ -27,9 +27,8 @@
                      (string-append ":" (to-d2 (number->string sec)))
                      "")))
 
-(define (make-remind subject user time content add-message)
+(define (make-remind subject user-id time content add-message)
   (define now (current-date))
-  (define user-id (send user get-id))
   (cond
     [(> time (date->seconds now))
      (cancel-timer user-id)
@@ -139,41 +138,49 @@
     (close-output-port out)))
 
 
-(define (remind-parse-args words)
+(define ((remind-parse-args sender) words)
+  (define (make-args user-id time-text content)
+    (set! time-text (string-trim time-text))
+    (cond
+      [(regexp-match? #rx"^[0-9]*:?[0-9]*:?[0-9]*$" time-text)
+       (define parts (map string->number (string-split time-text ":")))
+       (and (> (length parts) 0))
+       (define hour? (λ (v) (<= 0 v 23)))
+       (define t60? (λ (v) (<= 0 v 59)))
+       (define times (match parts
+                       [(list (? hour? hour) (? t60? minute))
+                        (list hour minute 0)]
+                       [(list (? hour? hour) (? t60? minute) (? t60? second))
+                        (list hour minute second)]
+                       [_ #f]))
+       (cond
+         [times
+          (match-define (list hour minute second) times)
+          (define now (current-date))
+          (define time
+            (date->seconds (date second
+                                 minute
+                                 hour
+                                 (date-day now)
+                                 (date-month now)
+                                 (date-year now)
+                                 (date-week-day now)
+                                 (date-year-day now)
+                                 (date-dst? now)
+                                 (date-time-zone-offset now))))
+          (set! content (string-join content ""))
+          (list user-id time content)]
+         [else #f])]
+      [else #f]))
   (match words
     [(or (list "提醒" "我" time-text content ...)
          (list "提醒" "我" time-text "的" "时候" content ...)
-         (list "提醒" time-text content ...)
          (list time-text "提醒" "我" content ...))
+     (make-args (send sender get-id) time-text content)]
+    [(or (list "提醒" "@" other-uid (regexp #rx"\\s*") time-text content ...)
+         (list "提醒" (regexp #rx"\\s*") "@" other-uid (regexp #rx"\\s*") time-text content ...))
      (cond
-       [(regexp-match? #rx"^[0-9]*:?[0-9]*:?[0-9]*$" time-text)
-        (define parts (map string->number (string-split time-text ":")))
-        (and (> (length parts) 0))
-        (define hour? (λ (v) (<= 0 v 23)))
-        (define t60? (λ (v) (<= 0 v 59)))
-        (define times (match parts
-                        [(list (? hour? hour) (? t60? minute))
-                         (list hour minute 0)]
-                        [(list (? hour? hour) (? t60? minute) (? t60? second))
-                         (list hour minute second)]
-                        [_ #f]))
-        (cond
-          [times
-           (match-define (list hour minute second) times)
-           (define now (current-date))
-           (define time
-             (date->seconds (date second
-                                  minute
-                                  hour
-                                  (date-day now)
-                                  (date-month now)
-                                  (date-year now)
-                                  (date-week-day now)
-                                  (date-year-day now)
-                                  (date-dst? now)
-                                  (date-time-zone-offset now))))
-           (set! content (string-join content ""))
-           (list time content)]
-          [else #f])]
+       [(regexp-match? #rx"^[0-9]*$" other-uid)
+        (make-args (string->number other-uid) time-text content)]
        [else #f])]
     [else #f]))
