@@ -33,7 +33,6 @@
     [(> time (date->seconds now))
      (cancel-timer user-id)
      (set-remind subject user-id time content #:save #t)
-     (add-message (face-from-id 178))
      (add-message (format "好的，将在~a提醒你~a" (format-remind-time time) content))]
     [else
      (add-message "时间已过")]))
@@ -168,7 +167,7 @@
                                  (date-year-day now)
                                  (date-dst? now)
                                  (date-time-zone-offset now))))
-          (set! content (string-join content ""))
+          (set! content (string-trim (string-join content "")))
           (list user-id time content)]
          [else #f])]
       [else #f]))

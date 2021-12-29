@@ -43,14 +43,14 @@
      (random-dice add-message)]
     
     [(list "美音" args ...)
-     (dict-a-voice (string-join args "") add-message)]
+     (dict-a-voice (string-join args " ") add-message)]
     [(list "英音" args ...)
-     (dict-b-voice (string-join args "") add-message)]
+     (dict-b-voice (string-join args " ") add-message)]
 
     ; osu
     [(list "osu" "菜单")
      (osu-menu add-message)]
-    [(list "设置" "osu" "用户" osu-uid)
+    [(list "设置" "osu" "用户" (regexp #rx"\\s*") osu-uid)
      (sender-bind-to-osu-user sender-id osu-uid add-message)]
     [(list "osu-stat" osu-uid ...)
      (osu-stat "osu"

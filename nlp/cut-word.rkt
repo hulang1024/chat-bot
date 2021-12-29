@@ -89,51 +89,66 @@
   (define count (length words))
   (define result null)
   (define acc-word-chars null)
-  
+
   (define (add-word word)
     (when (non-empty-string? word)
       (set! result (append result (cons word null)))))
 
   (define (acc-word-char c)
     (set! acc-word-chars (append acc-word-chars (cons c null))))
-  
+
   (define (add-acc-word)
     (unless (null? acc-word-chars)
       (add-word (list->string acc-word-chars))
       (set! acc-word-chars null)))
-  
+
   (define prev-is-digit #f)
+  (define prev-is-colon #f)
   (define prev-is-space #f)
+  (define prev-is-letter #f)
 
   (let loop ([i 0])
     (define word (list-ref words i))
+    (define is-digit #f)
+    (define is-space #f)
+    (define is-colon #f)
+    (define is-letter #f)
     (cond
       [(= (string-length word) 1)
        (define c (string-ref word 0))
-       (define n (char->integer c))
-       (define is-digit (<= 48 n 57))
-       (define is-space (char-whitespace? c))
        (cond
-         [is-digit
-          (when prev-is-space
+         [(char-numeric? c)
+          (set! is-digit #t)
+          (when (and (not prev-is-digit)
+                     (not prev-is-colon))
             (add-acc-word))
           (acc-word-char c)]
-         [(and (or (char=? c #\:) (char=? c #\：)) prev-is-digit)
+         [(or (char=? c #\:) (char=? c #\:))
+          (set! is-colon #t)
+          (when (not prev-is-digit)
+            (add-acc-word))
           (acc-word-char #\:)]
-         [is-space
+         [(char-whitespace? c)
+          (set! is-space #t)
           (when (not prev-is-space)
+            (add-acc-word))
+          (acc-word-char c)]
+         [(or (char-lower-case? c)
+              (char-upper-case? c))
+          (set! is-letter #t)
+          (when (not prev-is-letter)
             (add-acc-word))
           (acc-word-char c)]
          [else
           (add-acc-word)
-          (add-word word)])
-       (set! prev-is-digit is-digit)
-       (set! prev-is-space is-space)]
+          (add-word word)])]
       [else
        (add-acc-word)
-       (add-word word)
-       (set! prev-is-digit #f)
-       (set! prev-is-space #f)])
+       (add-word word)])
+    (set! prev-is-digit is-digit)
+    (set! prev-is-colon is-colon)
+    (set! prev-is-space is-space)
+    (set! prev-is-letter is-letter)
     (when (< i (- count 1))
       (loop (+ i 1))))
   (add-acc-word)

@@ -41,7 +41,7 @@
   (define (get-value key [def #f])
     (hash-ref jsexpr key def))
   (new api-result%
-       [code (get-value 'code)]
+       [code (get-value 'code 1)]
        [data (get-value 'data)]
        [output (get-value 'output "")]
        [value (get-value 'value)]
