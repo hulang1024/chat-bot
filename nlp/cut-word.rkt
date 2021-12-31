@@ -2,14 +2,19 @@
 (require "dict.rkt") 
 
 (provide (rename-out (cut-words/mm cut-words))
-         print/join)
+         (struct-out s-word)
+         print/join-words)
          
 
-(define (print/join words)
-  (displayln (string-join words "/" #:before-first "/" #:after-last "/")))
+(define (print/join-words words)
+  (displayln (string-join (map (λ (w)
+                                 (format "[~a:~a]" (s-word-type w) (s-word-text w)))
+                               words)
+                          "/" #:before-first "/" #:after-last "/")))
 
+(struct s-word (type text) #:transparent)
 
-; 基于词典的切分，双向最大匹配算法
+; 基于词典的的双向最大匹配分词算法
 (define (cut-words/mm sentence)
   (set! sentence (string-trim sentence))
   (define len (string-length sentence))
@@ -35,25 +40,28 @@
       (set-box! out (list->string cs))
       i)
   
-    (define (read-number out i)
-      (read-section out char-numeric? i))
-  
     (define (read-spaces out i)
       (read-section out char-whitespace? i))
 
-    (define (read-alpha-word out i)
-      (read-section out alpha-word-char? i))
+    (define (read-number out i)
+      ; todo: 待完善
+      (read-section out char-numeric? i))
+    
+    (define (read-en-word out i)
+      ; todo: 待完善
+      (read-section out en-word-char? i))
 
-    (define (alpha-word-char? c)
-      (or (char-upper-case? c) (char-lower-case? c)))
+    (define (en-word-char? c)
+      ; todo: 待完善
+      (or (char-upper-case? c) (char-lower-case? c) (char=? #\- c)))
 
     (define words null)
     (define add-word
       (if reverse?
-          (λ (word)
-            (set! words (cons word words)))
-          (λ (word)
-            (set! words (append words (cons word null))))))
+          (λ (type word)
+            (set! words (cons (s-word type word) words)))
+          (λ (type word)
+            (set! words (append words (cons (s-word type word) null))))))
     (define start (if reverse? (- len 1) 0))
     (define word-len 0)
     (define sub null)
@@ -65,14 +73,18 @@
         (define out (box #f))
         (match c
           [(? char-numeric? c)
-           (set! start (read-number out start))]
+           (set! start (read-number out start))
+           (add-word 'number (unbox out))]
           [(? char-whitespace? c)
-           (set! start (read-spaces out start))]
-          [(? alpha-word-char? c)
-           (set! start (read-alpha-word out start))]
+           (set! start (read-spaces out start))
+           (add-word 'space (unbox out))]
+          [(? en-word-char? c)
+           (set! start (read-en-word out start))
+           (add-word 'en (unbox out))]
+          [(? wide-punctuation? c)
+           (add-word 'wp (string c))
+           (set! start ((if reverse? - +) start 1))]
           [_ (set! is-han #t)])
-        (when (unbox out)
-          (add-word (unbox out)))
         (when (and (if reverse? (>= start 0) (< start len))
                    (not is-han))
           (loop-non-han)))
@@ -84,8 +96,8 @@
                         (substring sentence (+ 1 (- start word-len)) (+ start 1))
                         (substring sentence start (+ start word-len))))
           (cond
-            [(= word-len 1) (add-word sub)]
-            [(dict-has? sub) (add-word sub)]
+            [(= word-len 1) (add-word 'text sub)]
+            [(dict-has? sub) (add-word 'text sub)]
             [else
              (set! word-len (- word-len 1))
              (when (> word-len 0)
@@ -96,29 +108,34 @@
     words)
   
   (define (single-count words)
-    (count (λ (word) (= (string-length word) 1))
+    (count (λ (word) (= (string-length (cdr word)) 1))
            words))
-  
-  (define f-words (cut #f))
-  (define b-words (cut #t))
-  (define f-total (length f-words))
-  (define b-total (length b-words))
-  ; 对正向和反向的结果进行比较，使用启发式规则决定采用哪一种结果
+
   (cond
-    ; 如果词数相同
-    [(= f-total b-total)
+    [(non-empty-string? sentence)
+     (define f-words (cut #f))
+     (define b-words (cut #t))
+     (define f-total (length f-words))
+     (define b-total (length b-words))
+     ; 对正向和反向的结果进行比较，使用启发式规则决定采用哪一种结果
      (cond
-       ; 如果分词内容相同，说明没有歧义，返回任意一个
-       [(andmap string=? f-words b-words) f-words]
+       ; 如果词数相同
+       [(= f-total b-total)
+        (cond
+          ; 如果分词内容相同，说明没有歧义，返回任意一个
+          [(andmap (λ (x y)
+                     (string=? (s-word-text x) (s-word-text y)))
+                   f-words b-words) f-words]
+          [else
+           (define f-cnt (single-count f-words))
+           (define b-cnt (single-count b-words))
+           ; 否则，返回单字词较少的那个
+           (if (>= f-cnt b-cnt)
+               b-words
+               f-words)])]
        [else
-        (define f-cnt (single-count f-words))
-        (define b-cnt (single-count b-words))
-        ; 否则，返回单字词较少的那个
-        (if (>= f-cnt b-cnt)
+        ; 否则，返回词数较少的那个
+        (if (> f-total b-total)
             b-words
             f-words)])]
-    [else
-     ; 否则，返回词数较少的那个
-     (if (> f-total b-total)
-         b-words
-         f-words)]))
+    [else null]))

@@ -1,7 +1,6 @@
 #lang racket
 (require net/url
-         json
-         "../../data/citys.rkt")
+         json)
 
 (provide query-weather
          query-weather-parse-args)
@@ -84,5 +83,5 @@
      (define day (match day-name ["今天" 0] ["明天" 1] ["后天" 2] [_ #f]))
      (list city day)]
     [(list city "天气")
-     (list city 0)]
+     (list city #f)]
     [else #f]))

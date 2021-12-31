@@ -2,6 +2,7 @@
 (require racket/date
          2htdp/batch-io
          "config.rkt"
+         "../../../nlp/tagging.rkt"
          "../../../timer.rkt"
          "../../../chat/message/main.rkt"
          "../../../chat/contact/group.rkt"
@@ -138,48 +139,38 @@
 
 
 (define ((remind-parse-args sender) words)
-  (define (make-args user-id time-text content)
-    (set! time-text (string-trim time-text))
-    (cond
-      [(regexp-match? #rx"^[0-9]*:?[0-9]*:?[0-9]*$" time-text)
-       (define parts (map string->number (string-split time-text ":")))
-       (and (> (length parts) 0))
-       (define hour? (λ (v) (<= 0 v 23)))
-       (define t60? (λ (v) (<= 0 v 59)))
-       (define times (match parts
-                       [(list (? hour? hour) (? t60? minute))
-                        (list hour minute 0)]
-                       [(list (? hour? hour) (? t60? minute) (? t60? second))
-                        (list hour minute second)]
-                       [_ #f]))
-       (cond
-         [times
-          (match-define (list hour minute second) times)
-          (define now (current-date))
-          (define time
-            (date->seconds (date second
-                                 minute
-                                 hour
-                                 (date-day now)
-                                 (date-month now)
-                                 (date-year now)
-                                 (date-week-day now)
-                                 (date-year-day now)
-                                 (date-dst? now)
-                                 (date-time-zone-offset now))))
-          (set! content (string-trim (string-join content "")))
-          (list user-id time content)]
-         [else #f])]
-      [else #f]))
+  (define (make-args user-id time-word content)
+    (match-define (hash-table ('hour hour) ('minute minute) ('second second))
+      (tagged-word-data time-word))
+    (define now (current-date))
+    (define time
+      (date->seconds (date second
+                           minute
+                           hour
+                           (date-day now)
+                           (date-month now)
+                           (date-year now)
+                           (date-week-day now)
+                           (date-year-day now)
+                           (date-dst? now)
+                           (date-time-zone-offset now))))
+    (list user-id time (string-trim (string-join content ""))))
   (match words
-    [(or (list "提醒" "我" time-text content ...)
-         (list "提醒" "我" time-text "的" "时候" content ...)
-         (list time-text "提醒" "我" content ...))
-     (make-args (send sender get-id) time-text content)]
-    [(or (list "提醒" "@" other-uid (regexp #rx"\\s*") time-text content ...)
-         (list "提醒" (regexp #rx"\\s*") "@" other-uid (regexp #rx"\\s*") time-text content ...))
-     (cond
-       [(regexp-match? #rx"^[0-9]*$" other-uid)
-        (make-args (string->number other-uid) time-text content)]
-       [else #f])]
+    [(or (list (tagged-word 'text "在")
+               (tagged-word 'time time)
+               (tagged-word 'text "提醒")
+               (tagged-word 'text "我")
+               content ...)
+         (list (tagged-word 'text "提醒")
+               (tagged-word 'text "我")
+               (tagged-word 'time time)
+               content ...))
+     (make-args (send sender get-id) time content)]
+    [(list (tagged-word 'text "在")
+           (tagged-word 'time time)
+           (tagged-word 'text "提醒")
+           (tagged-word 'text "@")
+           (tagged-word 'number other-uid)
+           content ...)
+     (make-args other-uid time content)]
     [else #f]))
