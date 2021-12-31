@@ -25,12 +25,12 @@
      (define value (send api-result get-value))
      (define output (string-trim (send api-result get-output)))
      (define has-output (not (string=? output "")))
-     (add-message output)
+     (add-message (new mirai-code-message% [code output]))
      (when (and value (or (not has-output)
                           (not (string=? value "#<void>"))))
        (when has-output
          (add-message "\n"))
-       (add-message (string-trim value)))]
+       (add-message (new mirai-code-message% [code (string-trim value)])))]
     [else
      (define error (send api-result get-error))
      (add-message (face-from-id 270))

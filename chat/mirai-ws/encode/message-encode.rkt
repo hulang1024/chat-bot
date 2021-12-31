@@ -30,6 +30,7 @@
       ['object:poke-message% encode-poke-message]
       ['object:app-message% encode-app-message]
       ['object:dice-message% encode-dice-message]
+      ['object:mirai-code-message% encode-mirai-code-message]
       [_ #f]))
   (if encode (encode message) #f))
 
@@ -109,6 +110,10 @@
         'summary (send m get-summary)
         'brief (send m get-brief)))
 
+
+(define (encode-mirai-code-message m)
+  (hash 'type "MiraiCode"
+        'code (send m get-code)))
 
 (define (null-ifnot v)
   (if v v (json-null)))

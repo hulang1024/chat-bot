@@ -49,7 +49,7 @@
         (define strs (filter (compose not false?)
                              (map (λ (m) (send m content-to-string)) lst)))
         (set! content-string (string-join strs "")))
-      content-string)
+      content-string)))
 
 
 (define (as-message-chain message)

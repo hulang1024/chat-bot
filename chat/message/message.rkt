@@ -178,3 +178,13 @@
     (define/public (get-brief) brief)
     
     (define/public (content-to-string) (format "[分享]~a" title))))
+
+
+(define mirai-code-message%
+  (class* object% (single-message<%>)
+    (super-new)
+    (init-field code)
+
+    (define/public (get-code) code)
+
+    (define/public (content-to-string) #f)))
