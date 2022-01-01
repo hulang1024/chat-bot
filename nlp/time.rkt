@@ -1,28 +1,148 @@
 #lang racket
+(require racket/date
+         "tagging.rkt")
 
-(define in-day-word-to-hour-range
-  (hash
-   '凌晨 '(0 . 2)
-   '黎明 '(4 . 5)
-   '拂晓 '(4 . 6)
-   '清晨 '(6 . 7)
-   '早晨 '(6 . 8)
-   '上午 '(8 . 11)
-   '中午 '(11 . 13)
-   '下午 '(14 . 17)
-   '晚上 '(18 . 22)
-   '傍晚 '(17 . 18)
-   '黄昏 '(16 . 17)
-   '午夜 '(23 . 1)
-   '夜间 '(19 . 5)))
+(provide time-word->date
+         date->short-string
+         date-seconds->short-string)
 
-(define relative-today-word-to-offset
-  (hash
-   '前天 -2
-   '昨天 -1
-   '今天 0
-   '明天 1
-   '后天 2))
 
-(define duration-word-to-value #f)
-   
+(define (time-word->date word [context null])
+  (define now (current-date))
+
+  (define (make-part-name-value date)
+    (make-hash
+     (list (cons 'second (date-second date))
+           (cons 'minute (date-minute date))
+           (cons 'hour (date-hour date))
+           (cons 'day (date-day date))
+           (cons 'month (date-month date))
+           (cons 'year (date-year date)))))
+  
+  (define exprs (if (tagged-word? word) (tagged-word-data word) word))
+
+  (define (get-expr i)
+    (if (< i (length exprs))
+        (list-ref exprs i)
+        #f))
+
+  (define (mod-expr-ops new-op i)
+    (let for-mod ([j (- i 1)])
+      (when (>= j 0)
+        (define expr (get-expr j))
+        (when (and (time-expr? expr)
+                   (equal? (time-expr-op expr) '=)
+                   (not (false? (time-expr-duration? expr))))
+          (set! exprs
+                (list-set exprs j (time-expr new-op
+                                             (time-expr-part-name expr)
+                                             (time-expr-value expr)
+                                             #t))))
+        (for-mod (- j 1)))))
+
+  (let loop ([i 0])
+    (when (< i (length exprs))
+      (define expr (get-expr i))
+      (match expr
+        ['after (mod-expr-ops '+ i)]
+        ['before (mod-expr-ops '- i)]
+        [(? hour-section? _)
+         (set! exprs
+               (list-set exprs i (time-expr '= 'hour (hour-section-start expr) #f)))]
+        [_ #t])
+      (loop (+ i 1))))
+
+  (define time-exprs (filter time-expr? exprs))
+
+  (define part-name-value (make-part-name-value now))
+
+  (when (and (not (null? time-exprs))
+             (false? (time-expr-duration? (last time-exprs))))
+    ; 精确到什么时间分量
+    (match (time-expr-part-name (last time-exprs))
+      ['year
+       (hash-set! part-name-value 'month 1)
+       (hash-set! part-name-value 'day 1)
+       (hash-set! part-name-value 'hour 0)
+       (hash-set! part-name-value 'minute 0)
+       (hash-set! part-name-value 'second 0)]
+      ['month
+       (hash-set! part-name-value 'day 1)
+       (hash-set! part-name-value 'hour 0)
+       (hash-set! part-name-value 'minute 0)
+       (hash-set! part-name-value 'second 0)]
+      ['day
+       (hash-set! part-name-value 'hour 0)
+       (hash-set! part-name-value 'minute 0)
+       (hash-set! part-name-value 'second 0)]
+      ['hour
+       (hash-set! part-name-value 'minute 0)
+       (hash-set! part-name-value 'second 0)]
+      ['minute
+       (hash-set! part-name-value 'second 0)]))
+
+  (define (part-name-value->date)
+    (date (hash-ref part-name-value 'second)
+          (hash-ref part-name-value 'minute)
+          (hash-ref part-name-value 'hour)
+          (hash-ref part-name-value 'day)
+          (hash-ref part-name-value 'month)
+          (hash-ref part-name-value 'year)
+          (date-week-day now)
+          (date-year-day now)
+          (date-dst? now)
+          (date-time-zone-offset now)))
+  
+  (define (unit->seconds unit value)
+    (match unit
+      ['day (unit->seconds 'hour (* value 24))]
+      ['hour (unit->seconds 'minute (* value 60))]
+      ['minute (* value 60)]
+      ['second value]
+      [_ 0]))
+
+  (define (add-time part-name value)
+    (define seconds (+ (date->seconds (part-name-value->date))
+                       (unit->seconds part-name value)))
+    (set! part-name-value (make-part-name-value (seconds->date seconds))))
+  
+  (for-each
+   (λ (expr)
+     (define part-name (time-expr-part-name expr))
+     (define base-value (hash-ref part-name-value part-name))
+     (match (time-expr-op expr)
+       ['+ (add-time part-name (time-expr-value expr))]
+       ['- (add-time part-name (- (time-expr-value expr)))]
+       ['= (hash-set! part-name-value part-name
+                      (time-expr-value expr))]))
+   time-exprs)
+  (part-name-value->date))
+
+
+(define (date-seconds->short-string time now)
+  (date->short-string (seconds->date time)))
+
+(define (date->short-string date now)
+  (if (today? date now)
+      (format-time date)
+      (string-append (format-day date) " " (format-time date))))
+
+(define (format-day date)
+  (format "~a-~a-~a"
+          (date-year date)
+          (leftpad-0 (date-month date))
+          (leftpad-0 (date-day date))))
+
+(define (format-time date)
+  (format "~a:~a:~a"
+          (leftpad-0 (date-hour date))
+          (leftpad-0 (date-minute date))
+          (leftpad-0 (date-second date))))
+
+(define (today? date today)
+  (and (= (date-year date) (date-year today))
+       (= (date-year-day date) (date-year-day today))))
+
+(define (leftpad-0 v [w 2])
+  (~a v #:width 2 #:align 'right #:pad-string "0"))
+      

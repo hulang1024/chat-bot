@@ -2,7 +2,9 @@
 (require "cut-word.rkt")
 
 (provide cut-tagged-words
-         (struct-out tagged-word))
+         (struct-out tagged-word)
+         (struct-out time-expr)
+         (struct-out hour-section))
 
 
 (define (print/join-tagged-words words)
@@ -15,6 +17,18 @@
               "/" #:before-first "/" #:after-last "/")))
 
 (struct tagged-word (type data) #:transparent)
+
+(struct time-expr
+  (; 表达运算
+   op
+   ; 时间分量名
+   part-name
+   ; 运算值
+   value
+   ; #t:是长度，#f:是时间点，null:歧义
+   duration?) #:transparent)
+
+(struct hour-section (start end) #:transparent)
 
 ;;; 分词，并标注词性
 ; remove-sapce? 是否移除 无意义 的空白
@@ -40,7 +54,7 @@
   (define (add i j)
     (box (+ (unbox i) j)))
 
-  (define (box-copy-value! i j)
+  (define (copy-box! i j)
     (set-box! i (unbox j))
     i)
   
@@ -62,8 +76,15 @@
   ; 尽可能不要复制额外的box--因为这样就回到了问题起点，而且还因为box/unbox增加了额外的复杂性。
 
   ; 解析时间
-  (define (parse-time i)
-    (define (parse-time/hour i)
+  (define (parse-clock i)
+    (define (hour-postfix? s)
+      (and s (findf (λ (s1) (string=? s s1)) '(":" "\uff1a" "点" "点钟" "时"))))
+    (define (minute-postfix? s)
+      (and s (findf (λ (s1) (string=? s s1)) '(":" "\uff1a" "分" "分钟"))))
+    (define (second-postfix? s)
+      (and s (findf (λ (s1) (string=? s s1)) '(":" "\uff1a" "秒" "秒钟"))))
+    
+    (define (parse-clock/hour i duration?)
       (define word (read-word i))
       (cond
         [(and word (equal? (s-word-type word) 'number))
@@ -71,85 +92,186 @@
          (define ahead-i (add i 1))
          (define ahead (read-word ahead-i)) ;ahead-i为跳过空格后的位置
          (match (and ahead (s-word-text ahead))
-           [(or ":" "\uff1a" "点")
-            (box-copy-value! i ahead-i)
+           [(or (? hour-postfix? _) "小时")
             (advance! i)
-            (define minute (parse-time/minute i))
-            (cond
-              [minute
-               (append (list (cons 'hour hour)) minute)]
-              [else
-               (define second (parse-time/second i))
-               (append (list (cons 'hour hour)) (if second second null))])]
+            (define hour-expr (time-expr '= 'hour hour duration?))
+            (set! ahead (read-word (advance! ahead-i)))
+            (match ahead
+              [(s-word 'text "半")
+               (copy-box! i ahead-i)
+               (list hour-expr (time-expr '= 'minute 30 duration?))]
+              [(s-word 'text "一刻")
+               (copy-box! i ahead-i)
+               (list hour-expr (time-expr '= 'minute 15 duration?))]
+              [_
+               (when (and ahead (string=? (s-word-text ahead) "过"))
+                 (advance! ahead-i))
+               (define minute-expr (parse-clock/minute ahead-i #f duration?))
+               (cond
+                 [minute-expr
+                  (copy-box! i ahead-i)
+                  (append (list hour-expr) minute-expr)]
+                 [else
+                  (define second-expr (parse-clock/second ahead-i #f duration?))
+                  (cond
+                    [second-expr
+                     (copy-box! i ahead-i)
+                     (list hour-expr second-expr)]
+                    [else
+                     hour-expr])])])]
            [_ #f])]
         [else #f]))
 
-    (define (parse-time/minute i)
-      (define word (read-word i))
+    (define (parse-clock/minute i postfix? duration?)
+      (define ahead-i (add i 0))
+      (define word (read-word ahead-i))
       (cond
         [(and word (equal? (s-word-type word) 'number))
          (define minute (string->number (s-word-text word)))
-         (define ahead-i (add i 1))
-         (define ahead (read-word ahead-i))
+         (define minute-expr (time-expr '= 'minute minute duration?))
+         (define ahead (read-word (advance! ahead-i)))
          (match (and ahead (s-word-text ahead))
-           [(or ":" "\uff1a" "分" "分钟")
-            (box-copy-value! i ahead-i)
-            (define second (parse-time/second (advance! i)))
-            (append (list (cons 'minute minute)) (if second second null))]
-           [_ #f])]
+           [(? minute-postfix? _)
+            (define j (add ahead-i 1))
+            (define second-expr (parse-clock/second j #f duration?))
+            (cond
+              [second-expr
+               (copy-box! i j)
+               (list minute-expr second-expr)]
+              [else
+               (copy-box! i ahead-i)
+               (list minute-expr)])]
+           [_ (if (or postfix? (and ahead (second-postfix? (s-word-text ahead))))
+                  #f
+                  (list minute-expr))])]
         [else #f]))
 
-    (define (parse-time/second i)
-      (define word (read-word i))
+    (define (parse-clock/second i postfix? duration?)
+      (define ahead-i (add i 0))
+      (define word (read-word ahead-i))
       (cond
         [(and word (equal? (s-word-type word) 'number))
          (define second (string->number (s-word-text word)))
-         (define ahead-i (add i 1))
-         (define ahead (read-word ahead-i))
+         (define second-expr (time-expr '= 'second second duration?))
+         (define ahead (read-word (advance! ahead-i)))
          (match (and ahead (s-word-text ahead))
-           [(or ":" "\uff1a" "秒")
-            (box-copy-value! i ahead-i)
-            (list (cons 'second second))]
-           [_ #f])]
+           [(? second-postfix? _)
+            (copy-box! i ahead-i)
+            second-expr]
+           [_ (if postfix? #f second-expr)])]
         [else #f]))
 
     (define head (read-word i))
     (define ahead (read-word (add i 1)))
     (cond
       [(and head ahead (equal? (s-word-type head) 'number))
-       (define ret
-         (match (s-word-text ahead)
-           [(or ":" "\uff1a" "点" "时") (parse-time/hour i)]
-           ["分" (parse-time/minute i)]
-           ["秒" (parse-time/second i)]
-           [_ #f]))
-       (if ret (make-hash ret) #f)]
+       (match (s-word-text ahead)
+         [(? hour-postfix? _) (parse-clock/hour i #f)]
+         ["小时" (parse-clock/hour i #t)]
+         [(? minute-postfix? _) (parse-clock/minute i #t null)]
+         [(? second-postfix? _) (parse-clock/second i #t null)]
+         [_ #f])]
       [else #f]))
 
+  (define (parse-relative-date i)
+    (define ahead-i (add i 0))
+    (define word (read-word ahead-i))
+    (define ret
+      (match (and word (s-word-text word))
+        [(or "明天" "明日") (time-expr '+ 'day 1 #f)]
+        [(or "后天" "后日") (time-expr '+ 'day 2 #f)]
+        [(or "今天" "今日") (time-expr '+ 'day 0 #f)]
+        [(or "昨天" "昨日") (time-expr '- 'day 1 #f)]
+        [(or "前天" "前日") (time-expr '- 'day 2 #f)]
+        ["明年" (time-expr '+ 'year 1 #f)]
+        ["后年" (time-expr '+ 'year 2 #f)]
+        ["今年" (time-expr '+ 'year 0 #f)]
+        ["昨年" (time-expr '- 'year 1 #f)]
+        ["前年" (time-expr '- 'year 2 #f)]
+        [_ #f]))
+    (cond
+      [ret (copy-box! i ahead-i)
+           ret]
+      [else #f]))
+
+  (define (parse-hour-section i)
+    (define ahead-i (add i 0))
+    (define word (read-word ahead-i))
+    (define ret
+      (match (and word (s-word-text word))
+        ["凌晨" (hour-section 0 2)]
+        ["黎明" (hour-section 4 5)]
+        ["拂晓" (hour-section 4 6)]
+        ["清晨" (hour-section 6 7)]
+        ["早晨" (hour-section 6 8)]
+        ["早上" (hour-section 6 8)]
+        ["上午" (hour-section 8 11)]
+        ["中午" (hour-section 11 13)]
+        ["下午" (hour-section 14 17)]
+        ["晚上" (hour-section 18 22)]
+        ["傍晚" (hour-section 17 18)]
+        ["黄昏" (hour-section 16 17)]
+        ["午夜" (hour-section 23 1)]
+        ["夜间" (hour-section 19 5)]
+        [_ #f]))
+    (cond
+      [ret (copy-box! i ahead-i)
+           ret]
+      [else #f]))
+
+  ; 返回一个连续时间词的列表
+  (define (parse-time i)
+    (define all-time-parsers (list parse-clock parse-relative-date parse-hour-section))
+    (define time-exprs null)
+    (define j (add i 0))
+    (let loop ([time-parsers all-time-parsers])
+      (define word (read-word j #f))
+      (define ret
+        (match (and word (s-word-text word))
+          [(or "后" "之后") 'after]
+          [(or "前" "之前") 'before]
+          ["的" '-]
+          [_ ((car time-parsers) j)]))
+      (cond
+        [ret (set! time-exprs (append time-exprs
+                                      (if (pair? ret) ret (cons ret null))))
+             (copy-box! i j)
+             (advance! j)
+             (loop all-time-parsers)]
+        [(not (null? (cdr time-parsers)))
+         (loop (cdr time-parsers))]
+        [else (advance! j -1) #f]))
+    (cond
+      [(null? time-exprs) #f]
+      [else
+       (copy-box! i j)
+       time-exprs]))
+  
   (let ([i (box 0)]
         [result null])
     (define (add-word type data)
       (when (or (not (equal? type 'space)) (not remove-space?))
         (set! result (append result (cons (tagged-word type data) null)))))
     (define (add-raw-word word)
-      (add-word (s-word-type word) (s-word-text word)))
-    
+      (add-word (s-word-type word)
+                (if (equal? (s-word-type word) 'number)
+                    (string->number (s-word-text word))
+                    (s-word-text word))))
+
     (let loop ()
       (when (< (unbox i) word-count)
-        (define word (read-word i #f))
-        (match (s-word-type word)
-          ['number
-           (define time (parse-time i))
-           (if time
-               (add-word 'time time)
-               (add-raw-word word))]
+        (define time (parse-time i))
+        (cond
+          [time (add-word 'time time)]
           [else
-           (add-raw-word word)])
+           (add-raw-word (read-word i #f))])
         (advance! i)
         (loop)))
     result))
 
 ;test
-;(define sentence "在 3 ： 12    ：  56秒  xx")
-;(print/join-words (cut-words sentence))
-;(print/join-tagged-words (cut-tagged-words sentence))
+(module+ test
+  (require rackunit)
+  (define sentence "在2分钟后提醒我吃饭")
+  (print/join-words (cut-words sentence))
+  (print/join-tagged-words (cut-tagged-words sentence)))

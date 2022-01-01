@@ -3,4 +3,4 @@
 (provide data-path)
 
 
-(define data-path "/home/chat-bot/nlp/data/")
+(define data-path "../nlp/data/")

@@ -108,7 +108,7 @@
     words)
   
   (define (single-count words)
-    (count (λ (word) (= (string-length (cdr word)) 1))
+    (count (λ (word) (= (string-length (s-word-text word)) 1))
            words))
 
   (cond
