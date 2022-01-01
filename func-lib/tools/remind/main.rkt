@@ -3,6 +3,7 @@
          2htdp/batch-io
          "config.rkt"
          "../../../nlp/tagging.rkt"
+         "../../../nlp/time.rkt"
          "../../../timer.rkt"
          "../../../chat/message/main.rkt"
          "../../../chat/contact/group.rkt"
@@ -16,25 +17,13 @@
 
 (define user-remind-timers (make-hash))
 
-(define (format-remind-time time)
-  (define (to-d2 v)
-    (~a v #:width 2 #:align 'right #:pad-string "0"))
-  (define date (seconds->date time))
-  (define sec (date-second date))
-  (string-append (format "~a:~a"
-                         (to-d2 (date-hour date))
-                         (to-d2 (date-minute date)))
-                 (if (> sec 0)
-                     (string-append ":" (to-d2 (number->string sec)))
-                     "")))
-
 (define (make-remind subject user-id time content add-message)
   (define now (current-date))
   (cond
     [(> time (date->seconds now))
      (cancel-timer user-id)
      (set-remind subject user-id time content #:save #t)
-     (add-message (format "好的，将在~a提醒你~a" (format-remind-time time) content))]
+     (add-message (format "好的，将在~a提醒你~a" (date-seconds->short-string time now) content))]
     [else
      (add-message "时间已过")]))
 
@@ -140,21 +129,10 @@
 
 (define ((remind-parse-args sender) words)
   (define (make-args user-id time-word content)
-    (match-define (hash-table ('hour hour) ('minute minute) ('second second))
-      (tagged-word-data time-word))
-    (define now (current-date))
-    (define time
-      (date->seconds (date second
-                           minute
-                           hour
-                           (date-day now)
-                           (date-month now)
-                           (date-year now)
-                           (date-week-day now)
-                           (date-year-day now)
-                           (date-dst? now)
-                           (date-time-zone-offset now))))
-    (list user-id time (string-trim (string-join content ""))))
+    (define ret-date (time-word->date time-word))
+    (list user-id
+          (date->seconds ret-date)
+          (string-trim (string-join (map tagged-word-data content) ""))))
   (match words
     [(or (list (tagged-word 'text "在")
                (tagged-word 'time time)
@@ -169,7 +147,7 @@
     [(list (tagged-word 'text "在")
            (tagged-word 'time time)
            (tagged-word 'text "提醒")
-           (tagged-word 'text "@")
+           (tagged-word 'wp "@")
            (tagged-word 'number other-uid)
            content ...)
      (make-args other-uid time content)]

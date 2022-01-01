@@ -1,6 +1,8 @@
 #lang racket
-(require "../chat/message/main.rkt"
+(require racket/date
+         "../chat/message/main.rkt"
          "../nlp/tagging.rkt"
+         "../nlp/time.rkt"
          "tools/weather.rkt"
          "tools/pic.rkt"
          "tools/joke.rkt"
@@ -65,6 +67,13 @@
   (when (not matched)
     (set! matched #t)
     (match tagged-words
+      [(list (tagged-word 'text "计算")
+             (tagged-word 'text "时间")
+             (tagged-word 'time time-word))
+       (define now (current-date))
+       (define ret-date (time-word->date time-word))
+       (add-message (make-quote-reply message))
+       (add-message (format "时间是 ~a" (date->short-string ret-date now)))]
       [(app (remind-parse-args sender) (? list? args))
        (apply make-remind `(,subject ,@args ,add-message))]
       [_ (set! matched #f)]))
