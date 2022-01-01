@@ -8,16 +8,16 @@
 
 
 (define (time-word->date word [context null])
-  (define now (current-date))
+  (define base-date (current-date))
 
-  (define (make-part-name-value date)
+  (define (make-part-name-value)
     (make-hash
-     (list (cons 'second (date-second date))
-           (cons 'minute (date-minute date))
-           (cons 'hour (date-hour date))
-           (cons 'day (date-day date))
-           (cons 'month (date-month date))
-           (cons 'year (date-year date)))))
+     (list (cons 'second (date-second base-date))
+           (cons 'minute (date-minute base-date))
+           (cons 'hour (date-hour base-date))
+           (cons 'day (date-day base-date))
+           (cons 'month (date-month base-date))
+           (cons 'year (date-year base-date)))))
   
   (define exprs (if (tagged-word? word) (tagged-word-data word) word))
 
@@ -54,7 +54,7 @@
 
   (define time-exprs (filter time-expr? exprs))
 
-  (define part-name-value (make-part-name-value now))
+  (define part-name-value (make-part-name-value))
 
   (when (and (not (null? time-exprs))
              (false? (time-expr-duration? (last time-exprs))))
@@ -79,7 +79,8 @@
        (hash-set! part-name-value 'minute 0)
        (hash-set! part-name-value 'second 0)]
       ['minute
-       (hash-set! part-name-value 'second 0)]))
+       (hash-set! part-name-value 'second 0)]
+      [_ #t]))
 
   (define (part-name-value->date)
     (date (hash-ref part-name-value 'second)
@@ -88,10 +89,10 @@
           (hash-ref part-name-value 'day)
           (hash-ref part-name-value 'month)
           (hash-ref part-name-value 'year)
-          (date-week-day now)
-          (date-year-day now)
-          (date-dst? now)
-          (date-time-zone-offset now)))
+          (date-week-day base-date)
+          (date-year-day base-date)
+          #f
+          0))
   
   (define (unit->seconds unit value)
     (match unit
@@ -104,7 +105,8 @@
   (define (add-time part-name value)
     (define seconds (+ (date->seconds (part-name-value->date))
                        (unit->seconds part-name value)))
-    (set! part-name-value (make-part-name-value (seconds->date seconds))))
+    (set! base-date (seconds->date seconds))
+    (set! part-name-value (make-part-name-value)))
   
   (for-each
    (λ (expr)
@@ -120,7 +122,7 @@
 
 
 (define (date-seconds->short-string time now)
-  (date->short-string (seconds->date time)))
+  (date->short-string (seconds->date time) now))
 
 (define (date->short-string date now)
   (if (today? date now)
