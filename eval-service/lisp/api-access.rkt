@@ -11,7 +11,7 @@
 (define api-result%
   (class object%
     (super-new)
-    (init-field code data output value error)
+    (init-field code error [data #f] [output ""] [value #f])
 
     (define/public (get-code) code)
     (define/public (get-data) data)
@@ -27,13 +27,12 @@
   (set! params (hash-copy params))
   (hash-set! params 'path path)
 
-  (define-values (status headers in)
-    (http-sendrecv/url (string->url (format "http://~a" host))
-                       #:method #"POST"
-                       #:data (jsexpr->string params)))
-
-  (define api-result (parser-api-result in))
-  api-result)
+  (with-handlers ([(const #t) (lambda (v) #f)])
+    (define-values (status headers in)
+      (http-sendrecv/url (string->url (format "http://~a" host))
+                         #:method #"POST"
+                         #:data (jsexpr->string params)))
+    (parser-api-result in)))
 
 
 (define (parser-api-result in)
