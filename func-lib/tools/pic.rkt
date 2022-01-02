@@ -3,7 +3,8 @@
          net/url
          "../utils/http-util.rkt"
          "../utils/random.rkt"
-         "../../chat/message/main.rkt")
+         "../../chat/message/main.rkt"
+         "../../chat/contact/message-receipt.rkt")
 
 (provide get-random-pic)
 
@@ -38,8 +39,10 @@
         (redirect-api "scenery" "https://api.ixiaowai.cn/gqapi/gqapi.php")
         (redirect-api "mm" "https://cdn.seovx.com/?mom=302")))
         
-        
-(define (get-random-pic category add-message)
+
+(define receipt-delay 10000)
+
+(define (get-random-pic category event)
   (define api-info (list-random-ref
                     (if (string=? category "all")
                         pic-apis
@@ -47,21 +50,32 @@
                                 pic-apis))))
   (define url (send api-info get-url))
   (set! url
-    (match (send api-info get-type)
-      ['direct url]
-      ['redirect
-       (define r-url (get-image-redirect-url url))
-       (if r-url
-           r-url
-           (api-error add-message))]))
-  (when url
-    (add-message (new image-message% [url url]))))
+        (match (send api-info get-type)
+          ['direct url]
+          ['redirect
+           (define r-url (get-image-redirect-url url))
+           (if r-url
+               r-url
+               #f)]))
 
+  (define mcb (new message-chain-builder%))
+  (define add-message (create-add-message mcb))
+  (cond
+    [url
+     (when (> receipt-delay 300)
+       (send (send event get-subject) send-message "请稍等"))
+     (add-message (new image-message% [url url]))]
+    [else
+     (add-message (face-from-id 270))
+     (add-message "图片接口发生错误,请重试")])
 
-(define (api-error add-message)
-  (add-message (face-from-id 270))
-  (add-message "图片接口发生错误,请重试")
-  #f)
+  (define send-time (current-inexact-milliseconds))
+  (define receipt
+    (send (send event get-subject) send-message (send mcb build)))
+  (message-receipt-promise-then
+   receipt
+   (λ (_)
+     (set! receipt-delay (- (current-inexact-milliseconds) send-time)))))
 
 (define (get-image-redirect-url url)
   (define-values (status headers in)

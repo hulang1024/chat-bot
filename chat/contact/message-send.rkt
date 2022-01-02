@@ -37,7 +37,9 @@
 
   (define bot (send subject get-bot))
   (define conn (send bot get-client-connection))
-  (define command-json (client-send-command! conn command #:content content))
+  (define-values (command-json receipt-promise)
+    (client-send-command! conn command #:content content))
   (when (send bot verbose?)
-    (printf "-> ~a\n" command-json)))
+    (printf "-> ~a\n" command-json))
+  receipt-promise)
       

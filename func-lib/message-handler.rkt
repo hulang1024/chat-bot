@@ -11,6 +11,7 @@
          "tools/dict.rkt"
          "tools/osu.rkt"
          "tools/dice.rkt"
+         "tools/test-speed.rkt"
          "tools/remind/main.rkt")
 
 (provide handle-message)
@@ -73,16 +74,18 @@
     (match text-words
       [(list (or "帮助" "菜单"))
        (add-message say-to-me)]
+      [(list "测速")
+       (test-speed event)]
       [(app query-weather-parse-args (? list? args))
        (apply query-weather `(,@args ,add-message))]
       [(list "动漫" (or "图" "图片"))
-       (get-random-pic "anime" add-message)]
+       (get-random-pic "anime" event)]
       [(list "风景" (or "图" "图片"))
-       (get-random-pic "scenery" add-message)]
+       (get-random-pic "scenery" event)]
       [(list (or "美女" "妹子") (or "图" "图片"))
-       (get-random-pic "mm" add-message)]
+       (get-random-pic "mm" event)]
       [(list (or "图" "图片"))
-       (get-random-pic "all" add-message)]
+       (get-random-pic "all" event)]
 
       [(list "取消" "提醒")
        (cancel-remind sender add-message)]

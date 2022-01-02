@@ -6,7 +6,8 @@
          net/rfc6455
          net/url
          json
-         "heartbeat.rkt")
+         "heartbeat.rkt"
+         "../contact/message-receipt.rkt")
 
 (provide client-connect)
 
@@ -41,8 +42,10 @@
               [(string=? syncId "-1")
                (on-message-channel-data data)]
               ; 请求响应
-              [debug-mode
-               (match-define (hash-table ('msg msg)) data)
-               (when (non-empty-string? msg)
-                 (printf "server msg: ~a\n" msg))]))
+              [else
+               (message-receipt-promise-resolve syncId data)
+               (when debug-mode
+                 (match-define (hash-table ('msg msg)) data)
+                 (when (non-empty-string? msg)
+                   (printf "server msg: ~a\n" msg)))]))
           (loop)))))))
