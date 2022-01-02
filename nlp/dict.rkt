@@ -2,6 +2,7 @@
 (require "data.rkt")
 
 (provide init-dict
+         dict-add-word
          dict-max-word-length
          dict-has?
          wide-punctuation?)
@@ -27,6 +28,9 @@
                                    (read-data-file "wide-punctuation.txt"))))
 
 (init-dict)
+
+(define (dict-add-word word)
+  (set! dict (cons word dict)))
 
 (define (dict-has? word)
   (findf (λ (w) (string=? word w)) dict))

@@ -27,7 +27,7 @@
   (set! params (hash-copy params))
   (hash-set! params 'path path)
 
-  (with-handlers ([(const #t) (lambda (v) #f)])
+  (with-handlers ([(const #t) (λ (v) #f)])
     (define-values (status headers in)
       (http-sendrecv/url (string->url (format "http://~a" host))
                          #:method #"POST"

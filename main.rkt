@@ -7,7 +7,8 @@
          "chat/message/main.rkt"
          "eval-service/main.rkt"
          "func-lib/message-handler.rkt"
-         "func-lib/login-handler.rkt")
+         "func-lib/login-handler.rkt"
+         "nlp/dict.rkt")
 
 
 (define verbose-mode (make-parameter #f))
@@ -24,6 +25,8 @@
 (displayln "Started")
 
 (define bot (new bot%
+                 [id bot-id]
+                 [nickname bot-nickname]
                  [server-config mirai-ws-server-config]
                  [verbose (verbose-mode)]
                  [client-debug (debug-mode)]))
@@ -36,9 +39,9 @@
 
         (define message (send event get-message))
         (when (non-empty-string? (send message content-to-string))
-          (define handled (handle-message bot event add-message))
+          (define handled (handle-eval-service-message event add-message))
           (when (not handled)
-            (set! handled (handle-eval-service-message event add-message)))
+            (set! handled (handle-message bot event add-message)))
           (when handled
             (define mc (send mcb build))
             (when (not (send mc empty?))
@@ -48,4 +51,5 @@
 (send bot login
       (λ ()
         (displayln "已连接到服务器:)")
-        (handle-login bot)))
+        (handle-login bot)
+        (dict-add-word bot-nickname)))

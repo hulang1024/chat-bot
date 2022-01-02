@@ -49,7 +49,7 @@
         [(? hour-section? _)
          (set! exprs
                (list-set exprs i (time-expr '= 'hour (hour-section-start expr) #f)))]
-        [_ #t])
+        [else #t])
       (loop (+ i 1))))
 
   (define time-exprs (filter time-expr? exprs))
@@ -80,19 +80,21 @@
        (hash-set! part-name-value 'second 0)]
       ['minute
        (hash-set! part-name-value 'second 0)]
-      [_ #t]))
+      [else #t]))
 
   (define (part-name-value->date)
-    (date (hash-ref part-name-value 'second)
-          (hash-ref part-name-value 'minute)
-          (hash-ref part-name-value 'hour)
-          (hash-ref part-name-value 'day)
-          (hash-ref part-name-value 'month)
-          (hash-ref part-name-value 'year)
-          (date-week-day base-date)
-          (date-year-day base-date)
-          #f
-          0))
+    (with-handlers ([(const #t) (λ (v) (current-date))])
+      ; todo: 小数时有问题，待解决
+      (date (hash-ref part-name-value 'second)
+            (hash-ref part-name-value 'minute)
+            (hash-ref part-name-value 'hour)
+            (hash-ref part-name-value 'day)
+            (hash-ref part-name-value 'month)
+            (hash-ref part-name-value 'year)
+            (date-week-day base-date)
+            (date-year-day base-date)
+            #f
+            0)))
   
   (define (unit->seconds unit value)
     (match unit
@@ -100,7 +102,7 @@
       ['hour (unit->seconds 'minute (* value 60))]
       ['minute (* value 60)]
       ['second value]
-      [_ 0]))
+      [else 0]))
 
   (define (add-time part-name value)
     (define seconds (+ (date->seconds (part-name-value->date))

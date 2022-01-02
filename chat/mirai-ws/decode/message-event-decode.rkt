@@ -26,4 +26,4 @@
      (new friend-message-event% [bot bot]
                                 [message message-chain]
                                 [friend friend])]
-    [_ #f]))
+    [else #f]))

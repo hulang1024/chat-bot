@@ -42,10 +42,6 @@
   
     (define (read-spaces out i)
       (read-section out char-whitespace? i))
-
-    (define (read-number out i)
-      ; todo: 待完善
-      (read-section out char-numeric? i))
     
     (define (read-en-word out i)
       ; todo: 待完善
@@ -54,6 +50,42 @@
     (define (en-word-char? c)
       ; todo: 待完善
       (or (char-upper-case? c) (char-lower-case? c) (char=? #\- c)))
+
+
+    (define (read-number out i)
+      (define cs null)
+      (define has-dot #f)
+      (let loop ()
+        (define c (string-ref sentence i))
+        (define can-next #f)
+        (cond
+          [(char-numeric? c)
+           (set! can-next #t)]
+          [(char=? c #\-)
+           (cond
+             [reverse?
+              (set! cs (cons c cs))
+              (set! i (- i 1))
+              #f]
+             [(null? cs) (set! can-next #t)])]
+          [(char=? c #\.)
+           (when (not has-dot)
+             (set! has-dot #t)
+             (set! can-next #t))])
+        (when can-next
+          (cond
+            [reverse?
+             (set! cs (cons c cs))
+             (set! i (- i 1))
+             (when (>= i 0)
+               (loop))]
+            [else
+             (set! cs (append cs (cons c null)))
+             (set! i (+ i 1))
+             (when (< i len)
+               (loop))])))
+      (set-box! out (list->string cs))
+      i)
 
     (define words null)
     (define add-word
@@ -72,19 +104,19 @@
         (define is-han #f)
         (define out (box #f))
         (match c
-          [(? char-numeric? c)
+          [(or (? char-numeric? _) #\- #\.)
            (set! start (read-number out start))
            (add-word 'number (unbox out))]
-          [(? char-whitespace? c)
+          [(? char-whitespace? _)
            (set! start (read-spaces out start))
            (add-word 'space (unbox out))]
-          [(? en-word-char? c)
+          [(? en-word-char? _)
            (set! start (read-en-word out start))
            (add-word 'en (unbox out))]
-          [(? wide-punctuation? c)
+          [(? wide-punctuation? _)
            (add-word 'wp (string c))
            (set! start ((if reverse? - +) start 1))]
-          [_ (set! is-han #t)])
+          [else (set! is-han #t)])
         (when (and (if reverse? (>= start 0) (< start len))
                    (not is-han))
           (loop-non-han)))
@@ -134,6 +166,8 @@
                b-words
                f-words)])]
        [else
+        (displayln f-words)
+        (displayln b-words)
         ; 否则，返回词数较少的那个
         (if (> f-total b-total)
             b-words

@@ -17,13 +17,23 @@
 
 (define user-remind-timers (make-hash))
 
-(define (make-remind subject user-id time content add-message)
+(define (make-remind event user-id time content add-message)
   (define now (current-date))
   (cond
     [(> time (date->seconds now))
      (cancel-timer user-id)
-     (set-remind subject user-id time content #:save #t)
-     (add-message (format "好的，将在~a提醒你~a" (date-seconds->short-string time now) content))]
+     (define subject (send event get-subject))
+     (define sender (send event get-sender))
+     (define source-message (send event get-message))
+     (set-remind subject user-id time content #:save #t #:event event)
+     (add-message (make-quote-reply source-message))
+     (define self? (= (send sender get-id) user-id))
+     (when (and (is-a? subject group%) self?)
+       (add-message (new at% [target user-id])))
+     (add-message (format " 好的，将在~a提醒~a~a"
+                          (date-seconds->short-string time now)
+                          (if self? "你" "他")
+                          content))]
     [else
      (add-message "时间已过")]))
 
@@ -65,7 +75,7 @@
     [else #f]))
 
 
-(define (set-remind subject user-id time content #:save save)
+(define (set-remind subject user-id time content #:save save #:event [event #f])
   (define (db-save-remind)
     (define out (open-output-file db-filename
                                   #:mode 'text
@@ -89,9 +99,15 @@
     (define (repeat-thing t)
       (define mcb (new message-chain-builder%))
       (define add-message (create-add-message mcb))
+      (define source-message (send event get-message))
+      (when (and (= t 1) source-message)
+        (add-message (make-quote-reply source-message)))
       (when (is-a? subject group%)
         (add-message (new at% [target user-id])))
-      (add-message (string-append " " content))
+      (when (or (= t 1) (string=? content ""))
+        (add-message " 时间到了"))
+      (when (non-empty-string? content)
+        (add-message (string-append " " content)))
       (send subject send-message (send mcb build)))
     (define repeat-timer (new repeat-timer%
                        [on-repeat repeat-thing]
@@ -127,26 +143,25 @@
     (close-output-port out)))
 
 
-(define ((remind-parse-args sender) words)
+(define ((remind-parse-args event) words)
   (define (make-args user-id time-word content)
     (define ret-date (time-word->date time-word))
-    (list user-id
+    (list event
+          user-id
           (date->seconds ret-date)
-          (string-trim (string-join (map tagged-word-data content) ""))))
+          (string-trim (string-join (map tagged-word/text-text content) ""))))
   (match words
-    [(or (list (tagged-word 'text "在")
-               (tagged-word 'time time)
-               (tagged-word 'text "提醒")
+    [(or (list (tagged-word 'time time)
+               (tagged-word 'text (or "叫" "提醒"))
                (tagged-word 'text "我")
                content ...)
-         (list (tagged-word 'text "提醒")
+         (list (tagged-word 'text (or "叫" "提醒"))
                (tagged-word 'text "我")
                (tagged-word 'time time)
                content ...))
-     (make-args (send sender get-id) time content)]
-    [(list (tagged-word 'text "在")
-           (tagged-word 'time time)
-           (tagged-word 'text "提醒")
+     (make-args (send (send event get-sender) get-id) time content)]
+    [(list (tagged-word 'time time)
+           (tagged-word 'text (or "叫" "提醒"))
            (tagged-word 'wp "@")
            (tagged-word 'number other-uid)
            content ...)

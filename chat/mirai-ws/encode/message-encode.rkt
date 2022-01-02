@@ -31,7 +31,7 @@
       ['object:app-message% encode-app-message]
       ['object:dice-message% encode-dice-message]
       ['object:mirai-code-message% encode-mirai-code-message]
-      [_ #f]))
+      [else #f]))
   (if encode (encode message) #f))
 
 

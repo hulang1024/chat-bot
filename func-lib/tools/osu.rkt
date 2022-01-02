@@ -120,7 +120,7 @@
 (define mode-names '("osu" "taiko" "ctb" "mania"))
 
 (define (osu-stat mode-name osu-uid sender-id add-message)
-  (define mode (match mode-name ["osu" 0] ["taiko" 1] ["ctb" 2] ["mania" 3] [_ #f]))
+  (define mode (match mode-name ["osu" 0] ["taiko" 1] ["ctb" 2] ["mania" 3] [else #f]))
   (cond
     [(not mode)
      (add-message (string-append "第一个参数只可以写以下文字：" (string-join mode-names " ")))]

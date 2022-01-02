@@ -1,8 +1,10 @@
 #lang racket
 (require racket/date
          "../chat/message/main.rkt"
+         "../chat/contact/group.rkt"
          "../nlp/tagging.rkt"
          "../nlp/time.rkt"
+         "say-to-me.rkt"
          "tools/weather.rkt"
          "tools/pic.rkt"
          "tools/joke.rkt"
@@ -16,18 +18,61 @@
 
 (define (handle-message bot event add-message)
   (define message (send event get-message))
-  (define sender (send event get-sender))
   (define subject (send event get-subject))
+  (when (or (not (is-a? subject group%))
+            (send bot call-me? message))
+    (define message-content (send message content-to-string))
+    (define tagged-words (cut-tagged-words message-content))
+    (define (remove-lead-wps)
+      (set! tagged-words
+            (let loop ([words tagged-words])
+              (if (and (not (null? words))
+                       (equal? 'wp (tagged-word-type (car words))))
+                  (loop (cdr words))
+                  words))))
+    (match tagged-words
+      [(list (tagged-word 'wp "@") (tagged-word 'number id) _ ...)
+       (when (= id (send bot get-id))
+         (set! tagged-words (list-tail tagged-words 2)))]
+      [else (remove-lead-wps)])
+    (when (and (not (null? tagged-words))
+               (string=? (tagged-word/text-text (first tagged-words))
+                         (send bot get-nickname)))
+      (set! tagged-words (list-tail tagged-words 1))
+      (remove-lead-wps))
+    (cond
+      [(null? tagged-words)
+       (cond
+         [(> (random) 0.5)
+          (add-message (face-from-id 32))
+          (add-message "有啥事?")]
+         [else
+          (add-message say-to-me)])]
+      [else
+       (define handled (main-handle-message bot event tagged-words add-message))
+       (cond
+         [handled #t]
+         [else
+          (cond
+            [(> (random) 0.5)
+             (add-message (make-quote-reply message))
+             (add-message (face-from-id 176))
+             (add-message "我还不懂")]
+            [else
+             (add-message say-to-me)])])])))
+
+(define (main-handle-message bot event tagged-words add-message)
+  (define sender (send event get-sender))
   (define sender-id (send (send event get-sender) get-id))
-  (define message-content (send message content-to-string))
   
-  (define tagged-words (cut-tagged-words message-content))
   (define raw-words (map tagged-word-data tagged-words))
 
   (define matched #f)
   (when (not matched)
     (set! matched #t)
     (match raw-words
+      [(list (or "帮助" "没事" "菜单"))
+       (add-message say-to-me)]
       [(app query-weather-parse-args (? list? args))
        (apply query-weather `(,@args ,add-message))]
       [(list "动漫" (or "图" "图片"))
@@ -63,7 +108,7 @@
                  sender-id
                  add-message)]
     
-      [_ (set! matched #f)]))
+      [else (set! matched #f)]))
   (when (not matched)
     (set! matched #t)
     (match tagged-words
@@ -72,10 +117,10 @@
              (tagged-word 'time time-word))
        (define now (current-date))
        (define ret-date (time-word->date time-word))
-       (add-message (make-quote-reply message))
+       (add-message (make-quote-reply (send event get-message)))
        (add-message (format "时间是 ~a" (date->short-string ret-date now)))]
-      [(app (remind-parse-args sender) (? list? args))
-       (apply make-remind `(,subject ,@args ,add-message))]
-      [_ (set! matched #f)]))
+      [(app (remind-parse-args event) (? list? args))
+       (apply make-remind `(,@args ,add-message))]
+      [else (set! matched #f)]))
   matched)
   

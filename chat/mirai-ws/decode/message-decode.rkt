@@ -27,7 +27,7 @@
       ["Image" decode-image]
       ["FlashImage" decode-flash-image]
       ["Voice" decode-voice-message]
-      [_ #f]))
+      [else #f]))
   (if decode (decode jsexpr) #f))
 
 
