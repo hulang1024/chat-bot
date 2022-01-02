@@ -78,7 +78,7 @@
 
 (define (query-weather-parse-args words)
   (match words
-    [(list city (or "今天" "明天" "后天") (or "的天气" "天气"))
+    [(list city (or "今天" "明天" "后天") "天气")
      (define day-name (list-ref words 1))
      (define day (match day-name ["今天" 0] ["明天" 1] ["后天" 2] [else #f]))
      (list city day)]

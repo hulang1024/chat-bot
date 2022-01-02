@@ -65,13 +65,13 @@
   (define sender (send event get-sender))
   (define sender-id (send (send event get-sender) get-id))
   
-  (define raw-words (map tagged-word-data tagged-words))
+  (define text-words (map tagged-word/text-text tagged-words))
 
   (define matched #f)
   (when (not matched)
     (set! matched #t)
-    (match raw-words
-      [(list (or "帮助" "没事" "菜单"))
+    (match text-words
+      [(list (or "帮助" "菜单"))
        (add-message say-to-me)]
       [(app query-weather-parse-args (? list? args))
        (apply query-weather `(,@args ,add-message))]
