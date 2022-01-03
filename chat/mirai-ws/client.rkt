@@ -7,7 +7,7 @@
          net/url
          json
          "heartbeat.rkt"
-         "../contact/message-receipt.rkt")
+         "command-response.rkt")
 
 (provide client-connect)
 
@@ -43,9 +43,10 @@
                (on-message-channel-data data)]
               ; 请求响应
               [else
-               (message-receipt-promise-resolve syncId data)
+               (match-define (hash-table ('code code) ('msg msg)) data)
+               (define response (new command-response% [code code] [msg msg]))
+               (command-response-promise-resolve syncId response)
                (when debug-mode
-                 (match-define (hash-table ('msg msg)) data)
                  (when (non-empty-string? msg)
                    (printf "server msg: ~a\n" msg)))]))
           (loop)))))))

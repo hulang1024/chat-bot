@@ -8,12 +8,8 @@
          "../mirai-ws/encode/message-encode.rkt")
 
 (provide send-group-message
-         send-friend-message
-         message-receipt-promise-then)
+         send-friend-message)
 
-
-(define (message-receipt-promise-then promise proc)
-  (send promise then proc))
 
 (define (send-group-message #:group group
                             #:message message)

@@ -124,6 +124,20 @@
        (add-message (format "时间是 ~a" (date->short-string ret-date now)))]
       [(app (remind-parse-args event) (? list? args))
        (apply make-remind `(,@args ,add-message))]
+      [(list (tagged-word 'text "撤回")
+             (tagged-word 'text "这个")
+             (tagged-word 'text "消息"))
+       (define quote-m (send (send event get-message) get quote%))
+       (cond
+         [quote-m
+          (define source (new source% [id (send quote-m get-id)] [bot bot]))
+          (define promise (send source recall))
+          (send promise then
+                (λ (ret)
+                  (when (not (send ret ok?))
+                    (send (send event get-subject) send-message "撤回失败咯"))))]
+         [else
+          (add-message "哪个消息呀？")])]
       [else (set! matched #f)]))
   matched)
   

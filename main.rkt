@@ -35,7 +35,12 @@
       (λ (event)
         (define subject (send event get-subject))
         (define mcb (new message-chain-builder%))
-        (define add-message (create-add-message mcb))
+        (define sent? #f)
+        (define add-message (create-add-message
+                             mcb
+                             (λ (_) (cond
+                                      [sent? (error) #f]
+                                      [else #t]))))
 
         (define message (send event get-message))
         (when (non-empty-string? (send message content-to-string))
@@ -45,7 +50,8 @@
           (when handled
             (define mc (send mcb build))
             (when (not (send mc empty?))
-              (send subject send-message (send mc trim)))))))
+              (send subject send-message (send mc trim))))
+          (set! sent? #t))))
 
 (displayln "连接中...")
 (send bot login

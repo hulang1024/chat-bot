@@ -1,7 +1,7 @@
 #lang racket
 (require net/rfc6455
          json
-         "../contact/message-receipt.rkt")
+         "command-response.rkt")
 
 (provide client-send-command!)
 
@@ -17,7 +17,8 @@
                               command
                               #:content [content (json-null)]
                               #:sub-command [sub-command (json-null)]
-                              #:has-sync-id [has-sync-id #t])
+                              #:has-sync-id [has-sync-id #t]
+                              #:log? [log? #f])
   (define packet (make-hash `((command . ,command)
                               (subCommand . ,sub-command)
                               (content . ,content))))
@@ -27,7 +28,8 @@
   (hash-set! packet 'syncId syncId)
   (define json (jsexpr->string packet))
   (ws-send! conn json)
-  (define receipt-promise (make-message-receipt-promise syncId))
-  (values json receipt-promise))
+  (when log?
+    (printf "-> ~a\n" json))
+  (make-command-response-promise syncId))
 
 

@@ -99,7 +99,7 @@
     (define (repeat-thing t)
       (define mcb (new message-chain-builder%))
       (define add-message (create-add-message mcb))
-      (define source-message (send event get-message))
+      (define source-message (if event (send event get-message) #f))
       (when (and (= t 1) source-message)
         (add-message (make-quote-reply source-message)))
       (when (is-a? subject group%)

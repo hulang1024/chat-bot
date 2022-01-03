@@ -25,9 +25,10 @@
       message-chain)))
 
 
-(define (create-add-message mcb)
+(define (create-add-message mcb [interceptor #f])
   (λ (m)
-    (send mcb add m)))
+    (when (and interceptor (interceptor m))
+      (send mcb add m))))
 
 
 (define (make-quote-reply source-message)

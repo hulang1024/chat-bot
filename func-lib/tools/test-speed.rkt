@@ -1,5 +1,5 @@
 #lang racket
-(require "../../chat/contact/message-receipt.rkt")
+(require "../../chat/contact/message-send.rkt")
 
 (provide test-speed)
 

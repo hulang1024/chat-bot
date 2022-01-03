@@ -4,7 +4,7 @@
          "../utils/http-util.rkt"
          "../utils/random.rkt"
          "../../chat/message/main.rkt"
-         "../../chat/contact/message-receipt.rkt")
+         "../../chat/contact/message-send.rkt")
 
 (provide get-random-pic)
 

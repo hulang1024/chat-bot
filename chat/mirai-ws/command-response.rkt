@@ -1,8 +1,8 @@
 #lang racket
 
-(provide make-message-receipt-promise
-         message-receipt-promise-then
-         message-receipt-promise-resolve)
+(provide make-command-response-promise
+         command-response-promise-resolve
+         command-response%)
 
 
 (define promise%
@@ -26,18 +26,26 @@
                   then-procs)
         (set! then-procs null)))))
     
-(define (message-receipt-promise-then receipt-promise proc)
-  (send receipt-promise then proc))
-
 (define promises (make-hash))
 
-(define (make-message-receipt-promise id)
+(define (make-command-response-promise id)
   (define promise (new promise%))
   (hash-set! promises id promise)
   promise)
 
-(define (message-receipt-promise-resolve id result)
+(define (command-response-promise-resolve id response)
   (when (hash-has-key? promises id)
     (define promise (hash-ref promises id))
-    (send promise resolve result)
+    (send promise resolve response)
     (hash-remove! promises id)))
+
+
+(define command-response%
+  (class object%
+    (super-new)
+
+    (init-field code msg)
+
+    (define/public (get-code) code)
+    (define/public (get-msg) msg)
+    (define/public (ok?) (= code 0))))

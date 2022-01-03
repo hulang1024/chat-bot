@@ -1,4 +1,5 @@
 #lang racket
+(require "../mirai-ws/command.rkt")
 
 (provide (all-defined-out))
 
@@ -16,10 +17,20 @@
   (class* object% (single-message<%>)
     (super-new)
 
-    (init-field id time)
+    (init-field id [time #f] [bot #f])
     
     (define/public (get-id) id)
     (define/public (get-time) time)
+
+    (define/public (recall)
+      (cond
+        [bot
+         (define conn (send bot get-client-connection))
+         (client-send-command! conn
+                               "recall"
+                               #:content (hash 'target id)
+                               #:log? (send bot verbose?))]
+        [else #f]))
     
     (define/public (content-to-string) #f)))
 
