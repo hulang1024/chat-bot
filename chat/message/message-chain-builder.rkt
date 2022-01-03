@@ -27,7 +27,7 @@
 
 (define (create-add-message mcb [interceptor #f])
   (λ (m)
-    (when (and interceptor (interceptor m))
+    (when (or (not interceptor) (interceptor m))
       (send mcb add m))))
 
 
