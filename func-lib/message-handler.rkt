@@ -12,7 +12,8 @@
          "tools/osu.rkt"
          "tools/dice.rkt"
          "tools/test-speed.rkt"
-         "tools/remind/main.rkt")
+         "tools/remind/main.rkt"
+         "tools/moyu.rkt")
 
 (provide handle-message)
 
@@ -89,6 +90,9 @@
 
       [(list "取消" "提醒")
        (cancel-remind sender add-message)]
+
+      [(list "摸鱼")
+       (make-moyu add-message)]
      
       [(list "笑话")
        (get-joke add-message)]
