@@ -119,4 +119,4 @@
   (if v v (json-null)))
 
 (define (encode-url url)
-  (string-replace url " " "%20"))
+  (if (string? url) (string-replace url " " "%20") url))
