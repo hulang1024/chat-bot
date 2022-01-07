@@ -12,7 +12,6 @@
 (define temp-path "/home/chat-bot/data/")
 (define moyu-template-path (string-append temp-path "moyu-template.png"))
 (define holiday-file-path (string-append temp-path "holiday.csv"))
-(define last-make-date #f)
 (define holidays #f)
 
 (define (make-moyu add-message)
@@ -21,11 +20,10 @@
                                (date-year now)
                                (date-month now)
                                (date-day now)))
+
+  (define image (render-moyu-template-image moyu-template-path (make-moyu-data now)))
   (define path (string-append temp-path "moyu-today.png"))
-  (when (or (not last-make-date)
-            (not (string=? last-make-date today-string)))
-    (generate-moyu-image (make-moyu-data now) path)
-    (set! last-make-date today-string))
+  (send image save-file path 'png)
   (add-message (new image-message% [path path])))
 
 
@@ -110,11 +108,11 @@
 (define (leftpad v w p)
   (~a v #:width w #:align 'right #:pad-string p))
 
-(define (generate-moyu-image render-data save-path)
+(define (render-moyu-template-image template-path render-data)
   (define (get-value name)
     (cadr (assoc name render-data)))
   
-  (define moyu-bitmap (read-bitmap moyu-template-path))
+  (define moyu-bitmap (read-bitmap template-path))
   (define dc (new bitmap-dc% [bitmap moyu-bitmap]))
   (define (rgb r g b)
     (make-object color% r g b))
@@ -171,4 +169,4 @@
   (draw-holiday '中秋节 (rgb 255 66 255))
   (draw-holiday '国庆节 (rgb 255 161 38))
   (draw-holiday '元旦 (rgb 0 153 255))
-  (send moyu-bitmap save-file save-path 'png))
+  moyu-bitmap)
