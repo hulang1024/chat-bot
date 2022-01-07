@@ -92,7 +92,7 @@
        (cancel-remind sender add-message)]
 
       [(list "摸鱼")
-       (make-moyu add-message)]
+       (make-moyu event)]
      
       [(list "笑话")
        (get-joke add-message)]

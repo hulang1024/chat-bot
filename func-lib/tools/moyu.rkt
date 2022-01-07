@@ -1,30 +1,40 @@
 #lang racket
 (require racket/date
          racket/draw
+         math/base
          net/url
          json
          2htdp/batch-io
-         "../../chat/message/main.rkt")
+         "../../chat/message/main.rkt"
+         "pic.rkt")
 
 (provide make-moyu)
 
 
-(define temp-path "/home/chat-bot/data/")
-(define moyu-template-path (string-append temp-path "moyu-template.png"))
-(define holiday-file-path (string-append temp-path "holiday.csv"))
+(define work-path "/home/chat-bot/data/moyu/")
+(define holiday-file-path (string-append work-path "holiday.csv"))
 (define holidays #f)
+(define action-delay 10000)
 
-(define (make-moyu add-message)
-  (define now (current-date))
-  (define today-string (format "~a-~a-~a"
-                               (date-year now)
-                               (date-month now)
-                               (date-day now)))
+(define (make-moyu event)
+  (when (> action-delay 300)
+    (send (send event get-subject) send-message "请稍等"))
 
-  (define image (render-moyu-template-image moyu-template-path (make-moyu-data now)))
-  (define path (string-append temp-path "moyu-today.png"))
-  (send image save-file path 'png)
-  (add-message (new image-message% [path path])))
+  (thread
+   (λ ()
+     (define now (current-date))
+     (define today-string (format "~a-~a-~a"
+                                  (date-year now)
+                                  (date-month now)
+                                  (date-day now)))
+     (define start (current-inexact-milliseconds))
+     (define image (render-moyu-template-image
+                    (string-append work-path "moyu-template.png")
+                    (make-moyu-data now)))
+     (define path (string-append work-path "moyu.png"))
+     (send image save-file path 'png 100)
+     (set! action-delay (- (current-inexact-milliseconds) start))
+     (send (send event get-subject) send-message (new image-message% [path path])))))
 
 
 (define (make-moyu-data now)
@@ -113,32 +123,31 @@
     (cadr (assoc name render-data)))
   
   (define moyu-bitmap (read-bitmap template-path))
-  (define dc (new bitmap-dc% [bitmap moyu-bitmap]))
+  (define dc (send moyu-bitmap make-dc))
   (define (rgb r g b)
     (make-object color% r g b))
 
   ; 多少时间之后
-  (send dc set-font (make-font #:size 13
+  (send dc set-font (make-font #:size 12.5
                                #:family	'modern
-                               #:face "微软雅黑"
-                               #:weight 'medium))
+                               #:face "FZLanTingHeiS-R-GB"))
   (send dc set-text-foreground (rgb 10 10 10))
-  (send dc draw-text (get-value 'after) 100 364)
+  (send dc draw-text (get-value 'after) 106 368)
 
   ; 今日
   (send dc set-font (make-font #:size 11
                                #:family	'modern
-                               #:face "微软雅黑"
-                               #:weight 'medium))
+                               #:face "FZLanTingHeiS-R-GB"))
   (send dc set-text-foreground (rgb 18 128 20))
-  (send dc draw-text (get-value 'today) 170 428)
+  (define base-y 432)
+  (send dc draw-text (get-value 'today) 170 base-y)
   (send dc set-text-foreground (rgb 0 0 0))
-  (send dc draw-text (string-append (get-value 'hour-section-name) "好，摸鱼人") 238 428)
+  (send dc draw-text (string-append (get-value 'hour-section-name) "好，摸鱼人。") 238 base-y)
 
   ; 节假日剩余
   (define line 0)
   (define (draw-holiday name color [unit "天"])
-    (define base-x 150)
+    (define base-x 141)
     (define base-y 528)
     (define line-height 24.5)
     (define value (get-value name))
@@ -153,11 +162,11 @@
           (+ base-y (* line-height line)))
     (send dc set-text-foreground (rgb 0 0 0))
     (send dc set-font (make-font #:size 11
-                                 #:face "微软雅黑"
+                                 #:face "FZLanTingHeiS-R-GB"
                                  #:family 'modern))
     (send dc draw-text unit
           (+ base-x (* (string-length value-text) 10) 1)
-          (+ base-y (* line-height line)))
+          (+ base-y (* line-height line) 2))
     (set! line (+ line 1)))
   
   (draw-holiday '下班 (rgb 252 15 29) "分钟")
@@ -169,4 +178,21 @@
   (draw-holiday '中秋节 (rgb 255 66 255))
   (draw-holiday '国庆节 (rgb 255 161 38))
   (draw-holiday '元旦 (rgb 0 153 255))
+  (draw-cover moyu-bitmap)
   moyu-bitmap)
+
+(define (draw-cover moyu-bitmap)
+  (define-values (status headers in)
+    (http-sendrecv/url (string->url (get-random-pic-url (if (= (random-integer 0 2) 0) "mm" "scenery")))))
+  (define cover-bitmap (make-object bitmap% in))
+  (define moyu-dc (send moyu-bitmap make-dc))
+  (send moyu-dc draw-bitmap-section-smooth cover-bitmap
+        0 0 480 278 0 0
+        (send cover-bitmap get-width)
+        (send cover-bitmap get-height))
+
+  (define banner-bitmap (read-bitmap (string-append work-path "banner.png")))
+  (send moyu-dc draw-bitmap-section-smooth banner-bitmap
+        0 0 480 278 0 0
+        (send banner-bitmap get-width)
+        (send banner-bitmap get-height)))
