@@ -41,44 +41,41 @@
         (redirect-api "mm" "https://cdn.seovx.com/?mom=302")))
         
 
-(define receipt-delay 10000)
+(define action-delay 10000)
 
 (define (get-random-pic category event)
-  (define url (get-random-pic-url category))
-  (define mcb (new message-chain-builder%))
-  (define add-message (create-add-message mcb))
-  (cond
-    [url
-     (when (> receipt-delay 300)
-       (send (send event get-subject) send-message "请稍等"))
-     (add-message (new image-message% [url url]))]
-    [else
-     (add-message (face-from-id 270))
-     (add-message "图片接口发生错误,请重试")])
-
-  (define sent-time (current-inexact-milliseconds))
-  (define receipt
-    (send (send event get-subject) send-message (send mcb build)))
-  (message-receipt-promise-then
-   receipt
-   (λ (_)
-     (set! receipt-delay (- (current-inexact-milliseconds) sent-time)))))
+  (define subject (send event get-subject))
+  (when (> action-delay 300)
+    (send subject send-message "请稍等"))
+  (thread
+   (λ ()
+     (define start (current-inexact-milliseconds))
+     (define url (get-random-pic-url category))
+     (cond
+       [url
+        (message-receipt-promise-then
+         (send subject send-message (new image-message% [url url]))
+         (λ (_)
+           (set! action-delay (- (current-inexact-milliseconds) start))))]
+       [else
+        (define mcb (new message-chain-builder%))
+        (define add-message (create-add-message mcb))
+        (add-message (face-from-id 270))
+        (add-message "图片接口发生错误,请重试")
+        (send subject send-message (send mcb build))]))))
 
 
 (define (get-random-pic-url category)
-  (define api-info (list-random-ref
-                    (if (string=? category "all")
-                        pic-apis
-                        (filter (λ (a) (string=? (send a get-category) category))
-                                pic-apis))))
+  (define api-info
+    (list-random-ref
+     (if (string=? category "all")
+         pic-apis
+         (filter (λ (a) (string=? (send a get-category) category))
+                 pic-apis))))
   (define url (send api-info get-url))
   (match (send api-info get-type)
     ['direct url]
-    ['redirect
-     (define r-url (get-image-redirect-url url))
-     (if r-url
-         r-url
-         #f)]))
+    ['redirect (get-image-redirect-url url)]))
 
 (define (get-image-redirect-url url)
   (define-values (status headers in)

@@ -6,6 +6,7 @@
          json
          2htdp/batch-io
          "../../chat/message/main.rkt"
+         "../../chat/contact/message-send.rkt"
          "pic.rkt")
 
 (provide make-moyu)
@@ -17,8 +18,9 @@
 (define action-delay 10000)
 
 (define (make-moyu event)
+  (define subject (send event get-subject))
   (when (> action-delay 300)
-    (send (send event get-subject) send-message "请稍等"))
+    (send subject send-message "请稍等"))
 
   (thread
    (λ ()
@@ -33,8 +35,10 @@
                     (make-moyu-data now)))
      (define path (string-append work-path "moyu.png"))
      (send image save-file path 'png 100)
-     (set! action-delay (- (current-inexact-milliseconds) start))
-     (send (send event get-subject) send-message (new image-message% [path path])))))
+     (message-receipt-promise-then
+      (send subject send-message (new image-message% [path path]))
+      (λ (_)
+        (set! action-delay (- (current-inexact-milliseconds) start)))))))
 
 
 (define (make-moyu-data now)
@@ -51,9 +55,11 @@
       [else 0]))
 
   (define today-text
-    (format "~a月~a日"
+    (format "~a月~a日周~a~a"
             (leftpad (date-month now) 2 "0")
-            (leftpad (date-day now) 2 "0")))
+            (leftpad (date-day now) 2 "0")
+            (string-ref "一二三四五六日" (- (date-week-day now) 1))
+            (get-hour-section-name (date-hour now))))
 
   (define offwork-time
     (find-seconds 0 0 18
@@ -61,10 +67,9 @@
   (define offwork-rest-minutes
     (max 0 (floor (/ (- offwork-time (date->seconds now)) 60))))
   `((after ,(format "~a分钟" 120))
-    (hour-section-name ,(get-hour-section-name now))
     (today ,today-text)
     (下班 ,offwork-rest-minutes)
-    (周末 ,(- 5 (date-week-day now)))
+    (周末 ,(max 0 (- 5 (date-week-day now))))
     ,@(map (λ (h) (list h (get-holiday-rest-day h)))
            '(春节 清明节 劳动节 端午节 中秋节 国庆节 元旦))))
 
@@ -92,27 +97,24 @@
   (define d (string->number (substring date-str 8 10)))
   (find-seconds 0 0 0 d m y))
 
-(define (get-hour-section-name now)
-  (define hour (date-hour now))
+(define (get-hour-section-name hour)
   (define section
     (findf
      (λ (it)
        (match-define (list start end) (cadr it))
-       (<= start hour end))
+       (if (< start end)
+           (<= start hour end)
+           (<= start hour)))
      `(["凌晨" (0 2)]
-       ["黎明" (4 5)]
-       ["拂晓" (4 6)]
-       ["清晨" (6 7)]
-       ["早晨" (6 8)]
-       ["早上" (6 8)]
-       ["上午" (8 11)]
+       ["黎明" (3 4)]
+       ["拂晓" (5 6)]
+       ["早上" (7 8)]
+       ["上午" (9 11)]
        ["中午" (11 13)]
        ["下午" (14 17)]
-       ["晚上" (18 22)]
        ["傍晚" (17 18)]
-       ["黄昏" (16 17)]
-       ["午夜" (23 1)]
-       ["夜间" (19 5)])))
+       ["晚上" (18 22)]
+       ["午夜" (23 1)])))
   (car section))
     
 (define (leftpad v w p)
@@ -139,37 +141,66 @@
                                #:family	'modern
                                #:face "FZLanTingHeiS-R-GB"))
   (send dc set-text-foreground (rgb 18 128 20))
-  (define base-y 432)
+  (define base-y 431)
   (send dc draw-text (get-value 'today) 170 base-y)
   (send dc set-text-foreground (rgb 0 0 0))
-  (send dc draw-text (string-append (get-value 'hour-section-name) "好，摸鱼人。") 238 base-y)
+  (define hi-text "好，摸鱼人。")
+  (send dc draw-text hi-text 296 base-y)
 
-  ; 节假日剩余
-  (define line 0)
-  (define (draw-holiday name color [unit "天"])
-    (define base-x 141)
-    (define base-y 528)
-    (define line-height 24.5)
-    (define value (get-value name))
-    (define value-text (leftpad (number->string value) 3 " "))
+
+  (define (draw-digital x y text color)
     (send dc set-font (make-font #:size 12
                                  #:family 'modern
                                  #:face "WW Digital"
                                  #:weight 'semibold))
     (send dc set-text-foreground color)
-    (send dc draw-text value-text
-          base-x
-          (+ base-y (* line-height line)))
+    ; 为等宽分别画每个字符
+    (for ([c text])
+      (when (not (char-whitespace? c))
+        (send dc draw-text (string c) x y))
+      (set! x (+ x 10))))
+
+  (define (draw-time-unit x y text)
     (send dc set-text-foreground (rgb 0 0 0))
     (send dc set-font (make-font #:size 11
                                  #:face "FZLanTingHeiS-R-GB"
                                  #:family 'modern))
-    (send dc draw-text unit
-          (+ base-x (* (string-length value-text) 10) 1)
-          (+ base-y (* line-height line) 2))
-    (set! line (+ line 1)))
+    (send dc draw-text text x (+ y 2.5)))
+
+  ; 时间距离相关
+  (define base-x 141)
+  (set! base-y 528)
+  (define line-height 24.5)
+  ; 下班
+  (define (draw-offwork)
+    (define seconds (get-value '下班))
+    (define hour (floor (/ seconds 60)))
+    (define minute (remainder seconds 60))
+    (define color (rgb 252 15 29))
+
+    (define x base-x)
+    (when (> hour 0)
+      (draw-digital x base-y (leftpad hour 3 " ") color)
+      (draw-time-unit (+ x 32) base-y "小时")
+      (set! x (+ x 64)))
+    (define minute-text (number->string minute))
+    (draw-digital x base-y minute-text color)
+    (set! x (+ x (* (string-length minute-text) 10) 1))
+    (draw-time-unit x base-y "分钟"))
   
-  (draw-holiday '下班 (rgb 252 15 29) "分钟")
+  ; 节假日剩余
+  (define line 1)
+  (define (draw-holiday name color [postfix "天"])
+    (draw-digital base-x
+                  (+ base-y (* line-height line))
+                  (leftpad (get-value name) 3 " ")
+                  color)
+    (draw-time-unit (+ base-x 32)
+                    (+ base-y (* line-height line))
+                    postfix)
+    (set! line (+ line 1)))
+
+  (draw-offwork)    
   (draw-holiday '周末 (rgb 253 141 37))
   (draw-holiday '春节 (rgb 18 128 20))
   (draw-holiday '清明节 (rgb 0 153 255))
@@ -178,12 +209,14 @@
   (draw-holiday '中秋节 (rgb 255 66 255))
   (draw-holiday '国庆节 (rgb 255 161 38))
   (draw-holiday '元旦 (rgb 0 153 255))
+
   (draw-cover moyu-bitmap)
   moyu-bitmap)
 
 (define (draw-cover moyu-bitmap)
+  (define category (if (= (random-integer 0 2) 0) "mm" "scenery"))
   (define-values (status headers in)
-    (http-sendrecv/url (string->url (get-random-pic-url (if (= (random-integer 0 2) 0) "mm" "scenery")))))
+    (http-sendrecv/url (string->url (get-random-pic-url category))))
   (define cover-bitmap (make-object bitmap% in))
   (define moyu-dc (send moyu-bitmap make-dc))
   (send moyu-dc draw-bitmap-section-smooth cover-bitmap
