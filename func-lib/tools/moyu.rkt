@@ -58,7 +58,7 @@
     (format "~a月~a日周~a~a"
             (leftpad (date-month now) 2 "0")
             (leftpad (date-day now) 2 "0")
-            (string-ref "一二三四五六日" (- (date-week-day now) 1))
+            (string-ref "日一二三四五六" (date-week-day now))
             (get-hour-section-name (date-hour now))))
 
   (define offwork-time
