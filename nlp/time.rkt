@@ -83,19 +83,18 @@
       [else #t]))
 
   (define (part-name-value->date)
-    (with-handlers ([(const #t) (λ (v) (current-date))])
-      ; todo: 小数时有问题，待解决
-      (date (hash-ref part-name-value 'second)
-            (hash-ref part-name-value 'minute)
-            (hash-ref part-name-value 'hour)
-            (hash-ref part-name-value 'day)
-            (hash-ref part-name-value 'month)
-            (hash-ref part-name-value 'year)
-            (date-week-day base-date)
-            (date-year-day base-date)
-            #f
-            0)))
-  
+    ; todo: 小数时有问题，待解决
+    (date (hash-ref part-name-value 'second)
+          (hash-ref part-name-value 'minute)
+          (hash-ref part-name-value 'hour)
+          (hash-ref part-name-value 'day)
+          (hash-ref part-name-value 'month)
+          (hash-ref part-name-value 'year)
+          (date-week-day base-date)
+          (date-year-day base-date)
+          #f
+          0))
+ 
   (define (unit->seconds unit value)
     (match unit
       ['day (unit->seconds 'hour (* value 24))]
@@ -109,18 +108,20 @@
                        (unit->seconds part-name value)))
     (set! base-date (seconds->date seconds))
     (set! part-name-value (make-part-name-value)))
-  
+
+  (define ok? #t)
   (for-each
    (λ (expr)
      (define part-name (time-expr-part-name expr))
      (define base-value (hash-ref part-name-value part-name))
-     (match (time-expr-op expr)
-       ['+ (add-time part-name (time-expr-value expr))]
-       ['- (add-time part-name (- (time-expr-value expr)))]
-       ['= (hash-set! part-name-value part-name
-                      (time-expr-value expr))]))
+     (with-handlers ([(const #t) (λ (v) (set! ok? #f))])
+       (match (time-expr-op expr)
+         ['+ (add-time part-name (time-expr-value expr))]
+         ['- (add-time part-name (- (time-expr-value expr)))]
+         ['= (hash-set! part-name-value part-name
+                        (time-expr-value expr))])))
    time-exprs)
-  (part-name-value->date))
+  (if ok? (part-name-value->date) #f))
 
 
 (define (date-seconds->short-string time now)

@@ -126,8 +126,9 @@
        (define ret-date (time-word->date time-word))
        (add-message (make-quote-reply (send event get-message)))
        (add-message (format "时间是 ~a" (date->short-string ret-date now)))]
-      [(app (remind-parse-args event) (? list? args))
-       (apply make-remind `(,@args ,add-message))]
+      [(app (remind-parse-args event) args)
+       (when (list? args)
+         (apply make-remind `(,@args ,add-message)))]
       [(list (tagged-word 'text "撤回")
              (tagged-word 'text "这个")
              (tagged-word 'text "消息"))

@@ -146,10 +146,18 @@
 (define ((remind-parse-args event) words)
   (define (make-args user-id time-word content)
     (define ret-date (time-word->date time-word))
-    (list event
-          user-id
-          (date->seconds ret-date)
-          (string-trim (string-join (map tagged-word/text-text content) ""))))
+    (cond
+      [ret-date
+       (list event
+             user-id
+             (date->seconds ret-date)
+             (string-trim (string-join (map tagged-word/text-text content) "")))]
+      [else
+       (define mcb (new message-chain-builder%))
+       (define add-message (create-add-message mcb))
+       (add-message (make-quote-reply (send event get-message)))
+       (add-message "不能提醒这个时间哦")
+       (send (send event get-subject) send-message (send mcb build))]))
   (match words
     [(or (list (tagged-word 'time time)
                (tagged-word 'text (or "叫" "提醒"))
