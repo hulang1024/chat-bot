@@ -168,7 +168,7 @@
         (add-message (format " ~a  在~a 提醒~a ~a\n"
                              (s-remind-id remind)
                              (date-seconds->short-string (s-remind-time remind) now)
-                             (if self? "你" (string-append "QQ" (s-remind-target-uid remind)))
+                             (if self? "你" (format "QQ~a" (s-remind-target-uid remind)))
                              (s-remind-content remind))))
       reminds)]))
 
