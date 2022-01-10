@@ -7,13 +7,14 @@
          2htdp/batch-io
          "../../chat/message/main.rkt"
          "../../chat/contact/message-send.rkt"
-         "pic.rkt")
+         "pic.rkt"
+         "../utils/random.rkt")
 
 (provide make-moyu)
 
 
-(define work-path "/home/chat-bot/data/moyu/")
-(define holiday-file-path (string-append work-path "holiday.csv"))
+(define work-path (string->path "/home/chat-bot/data/moyu/"))
+(define holiday-file-path (build-path work-path "holiday.csv"))
 (define holidays #f)
 (define action-delay 10000)
 
@@ -31,12 +32,12 @@
                                   (date-day now)))
      (define start (current-inexact-milliseconds))
      (define image (render-moyu-template-image
-                    (string-append work-path "moyu-template.png")
+                    (build-path work-path "moyu-template.png")
                     (make-moyu-data now)))
-     (define path (string-append work-path "moyu.png"))
+     (define path (build-path work-path "moyu.png"))
      (send image save-file path 'png 100)
      (message-receipt-promise-then
-      (send subject send-message (new image-message% [path path]))
+      (send subject send-message (new image-message% [path (path->string path)]))
       (λ (_)
         (set! action-delay (- (current-inexact-milliseconds) start)))))))
 
@@ -82,7 +83,7 @@
                                 (春节 . ,(holiday-date 1 31))
                                 (劳动节 . ,(holiday-date 5 1))
                                 (国庆节 . ,(holiday-date 10 1)))))
-  (define rows (read-csv-file holiday-file-path))
+  (define rows (read-csv-file (path->string holiday-file-path)))
   (for-each
    (λ (i)
      (hash-set! holidays
@@ -215,18 +216,34 @@
   (draw-cover moyu-bitmap)
   moyu-bitmap)
 
+
+(define fish-image-dir-path (build-path work-path "fish")) 
+(define fish-image-paths null)
+(define fish-image-configured? null)
 (define (draw-cover moyu-bitmap)
-  (define category (if (= (random-integer 0 2) 0) "mm" "scenery"))
-  (define-values (status headers in)
-    (http-sendrecv/url (string->url (get-random-pic-url category))))
-  (define cover-bitmap (make-object bitmap% in))
+  (when (null? fish-image-configured?)
+    (set! fish-image-configured? (directory-exists? fish-image-dir-path))
+    (when (and fish-image-configured? (null? fish-image-paths))
+      (set! fish-image-paths (directory-list fish-image-dir-path))))
+
+  (define cover-bitmap
+    (cond
+      [(null? fish-image-paths)
+       (define category (if (= (random-integer 0 2) 0) "mm" "scenery"))
+       (define-values (status headers in)
+         (http-sendrecv/url (string->url (get-random-pic-url category))))
+       (make-object bitmap% in)]
+      [else
+       (define path (list-random-ref fish-image-paths))
+       (read-bitmap (build-path fish-image-dir-path path))]))
+
   (define moyu-dc (send moyu-bitmap make-dc))
   (send moyu-dc draw-bitmap-section-smooth cover-bitmap
         0 0 480 278 0 0
         (send cover-bitmap get-width)
         (send cover-bitmap get-height))
 
-  (define banner-bitmap (read-bitmap (string-append work-path "banner.png")))
+  (define banner-bitmap (read-bitmap (build-path work-path "banner.png")))
   (send moyu-dc draw-bitmap-section-smooth banner-bitmap
         0 0 480 278 0 0
         (send banner-bitmap get-width)
