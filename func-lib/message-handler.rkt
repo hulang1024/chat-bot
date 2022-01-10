@@ -88,9 +88,14 @@
       [(list (or "图" "图片"))
        (get-random-pic "all" event)]
 
-      [(list "取消" "提醒")
-       (cancel-remind sender add-message)]
-
+      [(list "提醒" ...)
+       (remind-help add-message)]
+      [(list "我" "的" "提醒")
+       (my-reminds event add-message)]
+      [(list "我" (or "定" "设置" "创建") "的" "提醒")
+       (my-created-reminds event add-message)]
+      [(list (or "所有" "全部") "提醒")
+       (all-reminds event add-message)]
       [(list "摸鱼")
        (make-moyu event)]
      
@@ -126,10 +131,14 @@
        (define ret-date (time-word->date time-word))
        (add-message (make-quote-reply (send event get-message)))
        (add-message (format "时间是 ~a" (date->short-string ret-date now)))]
+      [(list (tagged-word 'text "取消")
+             (tagged-word 'text "提醒")
+             (tagged-word 'number remind-id))
+       (cancel-remind sender remind-id add-message)]
       [(app (remind-parse-args event) args)
        (cond
          [(list? args)
-          (apply make-remind `(,@args ,add-message))]
+          (apply create-remind `(,@args ,add-message))]
          [(false? args)
           (set! matched #f)])]
       [(list (tagged-word 'text "撤回")
