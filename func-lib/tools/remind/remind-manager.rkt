@@ -1,6 +1,5 @@
 #lang racket
-(require db
-         "config.rkt"
+(require "../../../db/bot-db.rkt"
          "../../../db/db-util.rkt")
 
 (provide (struct-out s-remind)
@@ -32,12 +31,6 @@
                   create-at)
   #:transparent)
 
-
-(define db-conn #f)
-
-(define (connect-db)
-  (when (not db-conn)
-    (set! db-conn (sqlite3-connect #:database db-path))))
 
 (define (query-all)
   (query-reminds "select * from remind order by create_at asc"))

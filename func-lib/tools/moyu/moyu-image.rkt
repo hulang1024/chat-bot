@@ -1,51 +1,30 @@
 #lang racket
 (require racket/date
          racket/draw
-         math/base
-         net/url
-         json
          2htdp/batch-io
-         "../../chat/message/main.rkt"
-         "../../chat/contact/message-send.rkt"
-         "pic.rkt"
-         "../utils/random.rkt")
+         "config.rkt")
 
-(provide make-moyu)
+(provide make-moyu-image
+         rgb)
 
 
-(define work-path (string->path "/home/chat-bot/data/moyu/"))
 (define holiday-file-path (build-path work-path "holiday.csv"))
 (define holidays #f)
-(define action-delay 10000)
 
-(define (make-moyu event)
-  (define subject (send event get-subject))
-  (when (> action-delay 300)
-    (send subject send-message "请稍等"))
-
-  (thread
-   (λ ()
-     (define now (current-date))
-     (define today-string (format "~a-~a-~a"
-                                  (date-year now)
-                                  (date-month now)
-                                  (date-day now)))
-     (define start (current-inexact-milliseconds))
-     (define image (render-moyu-template-image
-                    (build-path work-path "moyu-template.png")
-                    (make-moyu-data now)))
-     (define path (build-path work-path "moyu.png"))
-     (send image save-file path 'png 100)
-     (message-receipt-promise-then
-      (send subject send-message (new image-message% [path (path->string path)]))
-      (λ (_)
-        (set! action-delay (- (current-inexact-milliseconds) start)))))))
+(define (make-moyu-image draw-more)
+  (define image (render-moyu-template-image
+                 (build-path work-path "moyu-template.png")
+                 (make-moyu-data)))
+  (draw-more image)
+  (define path (build-path work-path "moyu.png"))
+  (send image save-file path 'png 100)
+  path)
 
 
-(define (make-moyu-data now)
+(define (make-moyu-data)
   (when (not holidays)
     (set! holidays (read-holidays)))
-
+  (define now (current-date))
   (define (get-holiday-rest-day name)
     (define seconds (hash-ref holidays name #f))
     (cond
@@ -127,8 +106,6 @@
   
   (define moyu-bitmap (read-bitmap template-path))
   (define dc (send moyu-bitmap make-dc))
-  (define (rgb r g b)
-    (make-object color% r g b))
 
   ; 多少时间之后
   (send dc set-font (make-font #:size 12.5
@@ -212,39 +189,7 @@
   (draw-holiday '中秋节 (rgb 255 66 255))
   (draw-holiday '国庆节 (rgb 255 161 38))
   (draw-holiday '元旦 (rgb 0 153 255))
-
-  (draw-cover moyu-bitmap)
   moyu-bitmap)
 
-
-(define fish-image-dir-path (build-path work-path "fish")) 
-(define fish-image-paths null)
-(define fish-image-configured? null)
-(define (draw-cover moyu-bitmap)
-  (when (null? fish-image-configured?)
-    (set! fish-image-configured? (directory-exists? fish-image-dir-path))
-    (when (and fish-image-configured? (null? fish-image-paths))
-      (set! fish-image-paths (directory-list fish-image-dir-path))))
-
-  (define cover-bitmap
-    (cond
-      [(null? fish-image-paths)
-       (define category (if (= (random-integer 0 2) 0) "mm" "scenery"))
-       (define-values (status headers in)
-         (http-sendrecv/url (string->url (get-random-pic-url category))))
-       (make-object bitmap% in)]
-      [else
-       (define path (list-random-ref fish-image-paths))
-       (read-bitmap (build-path fish-image-dir-path path))]))
-
-  (define moyu-dc (send moyu-bitmap make-dc))
-  (send moyu-dc draw-bitmap-section-smooth cover-bitmap
-        0 0 480 278 0 0
-        (send cover-bitmap get-width)
-        (send cover-bitmap get-height))
-
-  (define banner-bitmap (read-bitmap (build-path work-path "banner.png")))
-  (send moyu-dc draw-bitmap-section-smooth banner-bitmap
-        0 0 480 278 0 0
-        (send banner-bitmap get-width)
-        (send banner-bitmap get-height)))
+(define (rgb r g b)
+  (make-object color% r g b))

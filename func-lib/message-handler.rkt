@@ -13,7 +13,7 @@
          "tools/dice.rkt"
          "tools/test-speed.rkt"
          "tools/remind/main.rkt"
-         "tools/moyu.rkt")
+         "tools/moyu/main.rkt")
 
 (provide handle-message)
 
@@ -96,9 +96,12 @@
        (my-created-reminds event add-message)]
       [(list (or "所有" "全部") "提醒")
        (all-reminds event add-message)]
+      
       [(list "摸鱼")
-       (make-moyu event)]
-     
+       (moyu event)]
+      [(list "摸鱼" "帮助")
+       (moyu-help event add-message)]
+      
       [(list "笑话")
        (get-joke add-message)]
       [(list "随机" "点数")
