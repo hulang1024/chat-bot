@@ -33,16 +33,28 @@
   (cond
     [(send api-result ok?)
      (define value (send api-result get-value))
-     (define output (string-trim (send api-result get-output)))
-     (define has-output (not (string=? output "")))
+     (define output (send api-result get-output))
+     (define (convert-message items)
+       (for-each
+        (λ (item)
+          (add-message
+           (match (hash-ref item 'type "text")
+             ["image" (new image-message% [path (hash-ref item 'path)])]
+             [else (new mirai-code-message% [code (string-trim (hash-ref item 'content))])])))
+        items))
+     
+     (define has-output (not (null? output)))
      (when has-quote-reply?
        (add-message (make-quote-reply source-message)))
-     (add-message (new mirai-code-message% [code output]))
-     (when (and value (or (not has-output)
-                          (not (string=? value "#<void>"))))
+     (convert-message output)
+     (when (and (not (null? value))
+                (or (not has-output)
+                    (not (match value
+                           [(hash-table ('type "text") ('content "#<void>")) #f]
+                           [else #f]))))
        (when has-output
          (add-message "\n"))
-       (add-message (new mirai-code-message% [code (string-trim value)])))]
+       (convert-message value))]
     [else
      (define error (send api-result get-error))
      (add-message (face-from-id 270))
