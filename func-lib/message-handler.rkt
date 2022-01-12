@@ -4,6 +4,7 @@
          "../chat/contact/group.rkt"
          "../nlp/tagging.rkt"
          "../nlp/time.rkt"
+         "../eval-service/lisp/handle-message.rkt"
          "say-to-me.rkt"
          "tools/weather.rkt"
          "tools/pic.rkt"
@@ -159,5 +160,7 @@
          [else
           (add-message "哪个消息呀？")])]
       [else (set! matched #f)]))
+  (when (not matched)
+    (set! matched (execute-program event add-message (string-join text-words "") #f #t)))
   matched)
   

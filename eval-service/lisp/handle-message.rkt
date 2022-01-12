@@ -3,7 +3,8 @@
          "../../chat/message/main.rkt"
          "../../chat/contact/message-send.rkt")
 
-(provide handle-message)
+(provide handle-message
+         execute-program)
 
 
 (define (handle-message event add-message)
@@ -21,17 +22,21 @@
     [(regexp-match #rx"^\\s*\\(.+\\)" m-str)
      (set! expr-str (string-trim m-str))])
   (if (and expr-str (not (string=? expr-str "")))
-      (handle-api-result (eval-program expr-str
-                                       "global"
-                                       (send event get-sender))
-                         event
-                         add-message
-                         source-message
-                         has-quote-reply?)
+      (execute-program event add-message expr-str has-quote-reply?)
       #f))
 
 
-(define (handle-api-result api-result event add-message source-message has-quote-reply?)
+(define (execute-program event add-message expr has-quote-reply? [quiet-fail? #f])
+  (handle-api-result (eval-program expr
+                                   "global"
+                                   (send event get-sender))
+                     event
+                     add-message
+                     has-quote-reply?
+                     quiet-fail?))
+
+
+(define (handle-api-result api-result event add-message has-quote-reply? quiet-fail?)
   (cond
     [(send api-result ok?)
      (define mcb (new message-chain-builder%))
@@ -46,12 +51,17 @@
         (λ (item)
           (add-message
            (match (hash-ref item 'type "text")
-             ["image" (new image-message% [path (hash-ref item 'path)])]
-             [else (new mirai-code-message% [code (string-trim (hash-ref item 'content))])])))
+             ["image" (new image-message%
+                           [path (hash-ref item 'path)]
+                           [url (hash-ref item 'url)])]
+             ["audio" (new voice-message%
+                           [path (hash-ref item 'path)]
+                           [url (hash-ref item 'url)])]
+             [else (new mirai-code-message% [code (hash-ref item 'content)])])))
         items))
 
      (when has-quote-reply?
-       (add-message (make-quote-reply source-message)))
+       (add-message (make-quote-reply (send event get-message))))
      (convert-message output)
      (when (and (not (null? value))
                 (or (not has-output)
@@ -68,9 +78,11 @@
       (λ (_)
         (for-each
          (λ (m)
-           (when (and (is-a? m image-message%) (send m get-path))
+           (when (and (or (is-a? m image-message%) (is-a? m voice-message%))
+                      (path-string? (send m get-path)))
              (delete-file (send m get-path))))
          (send message-chain to-list))))]
+    [quiet-fail? #f]
     [else
      (define error (send api-result get-error))
      (add-message (face-from-id 270))
