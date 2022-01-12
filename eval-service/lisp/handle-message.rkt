@@ -74,7 +74,7 @@
 
      (define message-chain (send mcb build))
      (message-receipt-promise-then
-      (send (send event get-subject) send-message message-chain)
+      (send (send event get-subject) send-message (send message-chain trim))
       (λ (_)
         (for-each
          (λ (m)

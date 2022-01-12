@@ -36,10 +36,10 @@
                        (list-ref lst 0)))
       (define right (last lst))
 
-      (when (is-a? left plain%)
+      (when (or (is-a? left plain%) (is-a? left mirai-code-message%))
         (define trimmed (string-trim (send left get-text) #:right? #f))
         (send left set-text trimmed))
-      (when (is-a? right plain%)
+      (when (or (is-a? right plain%) (is-a? right mirai-code-message%))
         (define trimmed (string-trim (send right get-text) #:left? #f))
         (send right set-text trimmed))
       this)

@@ -197,5 +197,7 @@
     (init-field code)
 
     (define/public (get-code) code)
+    (define/public (get-text) code)
+    (define/public (set-text text) (set! code text))
 
     (define/public (content-to-string) #f)))
