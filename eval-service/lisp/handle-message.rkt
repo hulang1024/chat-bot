@@ -37,15 +37,15 @@
 
 
 (define (handle-api-result api-result event add-message has-quote-reply? quiet-fail?)
+  (define ok? (send api-result ok?))
+  (define value (send api-result get-value))
+  (define output (send api-result get-output))
+  (define length-good? (if ok? (output-length-good? (append value output)) #f))
+  
   (cond
-    [(send api-result ok?)
+    [(and ok? length-good?)
      (define mcb (new message-chain-builder%))
      (define add-message (create-add-message mcb))
-
-     (define value (send api-result get-value))
-     (define output (send api-result get-output))
-     (define has-output (not (null? output)))
-
      (define (convert-message items)
        (for-each
         (λ (item)
@@ -59,7 +59,7 @@
                            [url (hash-ref item 'url)])]
              [else (new mirai-code-message% [code (hash-ref item 'content)])])))
         items))
-
+     (define has-output (not (null? output)))
      (when has-quote-reply?
        (add-message (make-quote-reply (send event get-message))))
      (convert-message output)
@@ -82,8 +82,33 @@
                       (path-string? (send m get-path)))
              (delete-file (send m get-path))))
          (send message-chain to-list))))]
+    [(and ok? (not length-good?))
+     (add-message "消息太长啦")]
     [quiet-fail? #f]
     [else
      (define error (send api-result get-error))
-     (add-message (face-from-id 270))
+     (add-message "🎈")
      (add-message error)]))
+
+(define (output-length-good? output)
+  (define text-line-max 61)
+  (define image-max 11)
+  (define audio-max 5)
+
+  (define text-line-count 0)
+  (define image-count 0)
+  (define audio-count 0)
+  (for-each
+   (λ (item)
+     (match (hash-ref item 'type "text")
+       ["text"
+        (define content (hash-ref item 'content))
+        (set! text-line-count (+ text-line-count (length (string-split content "\n"))))]
+       ["image"
+        (set! image-count (+ image-count 1))]
+       ["audio"
+        (set! audio-count (+ audio-count 1))]))
+   output)
+  (and (< text-line-count text-line-max)
+       (< image-count image-max)
+       (< audio-count audio-max)))
