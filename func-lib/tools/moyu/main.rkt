@@ -3,6 +3,7 @@
          math/base
          net/url
          "config.rkt"
+         "../../../user/user-manager.rkt"
          "moyu-image.rkt"
          "fishing.rkt"
          "fish-manager.rkt"
@@ -76,7 +77,10 @@
        [else
         (message-receipt-promise-then
          (send subject send-message (format "~a 本次未摸到鱼。" (send sender get-nickname)))
-         (λ (_) (send-fish-image #f)))]))))
+         (λ (_)
+           (when (< action-delay 600)
+             (send-fish-image #f))))])
+     (user-manager:add-or-update sender))))
 
 
 (define (moyu-my-stat event)

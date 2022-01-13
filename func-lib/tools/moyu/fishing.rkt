@@ -119,4 +119,55 @@
          (add-message "你未摸过鱼")]))
 
     (define/public (ranking by top add-message)
-      (add-message "暂未实现"))))
+      (add-message "摸鱼排名")
+      (add-message (case by
+                     [('count) "按条数"]
+                     [('weight) "按重量"]
+                     [('overall) ""]))
+      (add-message (format " TOP ~A\n" top))
+      (define no 1)
+      (for-each
+       (λ (row)
+         (match-define (list user-id nickname weight count) row)
+         (add-message (format "#~A ~A ~A条，~A公斤\n"
+                              (~a no
+                                  #:align 'left #:width 2 #:pad-string " ")
+                              (~a nickname
+                                  #:align 'left #:width 12 #:pad-string " ")
+                              count
+                              weight))
+         (set! no (+ no 1)))
+       (query-ranking-by by top)))))
+
+(module ranking racket
+  (require "../../../db/bot-db.rkt"
+           "../../../db/db-util.rkt")
+
+  (provide query-ranking-by)
+  
+  (define (query-ranking-by by top)
+    (connect-db)
+    (define (mapping-result result)
+      (map-rows-result
+       result
+       (λ (get-value)
+         (list (get-value "user_id")
+               (if (sql-null? (get-value "nickname"))
+                   (format "@~a" (get-value "user_id"))
+                   (get-value "nickname"))
+               (get-value "weight")
+               (get-value "count")))))
+    (mapping-result
+     (query db-conn (string-append "select b.user_id, (select nickname from user where id = b.user_id) nickname,"
+                                   "sum(bf.fish_weight) weight, count(bf.fish_id) count "
+                                   "from moyu_fish_basket_fish bf "
+                                   "inner join moyu_fish_basket b on bf.basket_id = b.id "
+                                   "group by b.user_id "
+                                   "order by "
+                                   (case by
+                                     [(weight) "weight desc"]
+                                     [(count) "count desc"]
+                                     [(overall) "weight desc, count desc"])
+                                   " limit $1")
+            top))))
+(require 'ranking)
