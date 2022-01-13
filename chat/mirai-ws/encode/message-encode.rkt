@@ -68,21 +68,21 @@
   (hash 'type "Image"
         'imageId (null-ifnot (send m get-id))
         'url (encode-url (null-ifnot (send m get-url)))
-        'path (null-ifnot (send m get-path))))
+        'path (encode-path (send m get-path))))
 
 
 (define (encode-flash-image-message m)
   (hash 'type "FlashImage"
         'imageId (null-ifnot (send m get-id))
         'url (encode-url (null-ifnot (send m get-url)))
-        'path (null-ifnot (send m get-path))))
+        'path (encode-path (send m get-path))))
 
 
 (define (encode-voice-message m)
   (hash 'type "Voice"
         'voiceId (null-ifnot (send m get-id))
         'url (encode-url (null-ifnot (send m get-url)))
-        'path (null-ifnot (send m get-path))))
+        'path (encode-path (send m get-path))))
 
 
 (define (encode-poke-message m)
@@ -117,6 +117,9 @@
 
 (define (null-ifnot v)
   (if v v (json-null)))
+
+(define (encode-path v)
+  (if (path-string? v) (path->string v) (null-ifnot v)))
 
 (define (encode-url url)
   (if (string? url) (string-replace url " " "%20") url))
