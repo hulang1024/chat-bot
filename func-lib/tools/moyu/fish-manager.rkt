@@ -11,14 +11,17 @@
 
 (struct s-fish (id name alias) #:transparent)
 ; 所有鱼
-(define fishes null)
+(define fishes #f)
 
 ; 根据id获取图片路径
 (define (get-fish-image-path-by-id id)
   (build-path work-path "fish-images" (format "~a.png" id)))
 
 
-(define (get-fishes) fishes)
+(define (get-fishes)
+  (when (not fishes)
+    (reload-all))
+  fishes)
 
 
 (define (reload-all)

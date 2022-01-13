@@ -56,13 +56,9 @@
        (cond
          [handled #t]
          [else
-          (cond
-            [(> (random) 0.5)
-             (add-message (make-quote-reply message))
-             (add-message (face-from-id 176))
-             (add-message "我还不懂")]
-            [else
-             (add-message say-to-me)])])])))
+          (add-message (make-quote-reply message))
+          (add-message (face-from-id 176))
+          (add-message "我还不懂")])])))
 
 (define (main-handle-message bot event tagged-words add-message)
   (define sender (send event get-sender))
@@ -74,7 +70,7 @@
   (when (not matched)
     (set! matched #t)
     (match text-words
-      [(list (or "帮助" "菜单"))
+      [(list (or "帮助" "菜单" "功能"))
        (add-message say-to-me)]
       [(list "测速")
        (test-speed event)]
@@ -100,6 +96,16 @@
       
       [(list "摸鱼")
        (moyu event)]
+      [(list "我" "的" "鱼")
+       (moyu-my-stat event)]
+      [(list "清空" "我" "的" "鱼")
+       (moyu-clear-my-fish-basket event add-message)]
+      [(list "摸鱼" "排名")
+       (moyu-ranking 'overall event add-message)]
+      [(list "摸鱼" "排名" "按" "条数")
+       (moyu-ranking 'count event add-message)]
+      [(list "摸鱼" "排名" "按" "重量")
+       (moyu-ranking 'weight event add-message)]
       [(list "摸鱼" "帮助")
        (moyu-help event add-message)]
       
@@ -139,12 +145,9 @@
              (tagged-word 'text "提醒")
              (tagged-word 'number remind-id))
        (cancel-remind sender remind-id add-message)]
-      [(app (remind-parse-args event) args)
-       (cond
-         [(list? args)
-          (apply create-remind `(,@args ,add-message))]
-         [(false? args)
-          (set! matched #f)])]
+      [(app (remind-parse-args event) (or (? void? args) (? list? args)))
+       (when (list? args)
+         (apply create-remind `(,@args ,add-message)))]
       [(list (tagged-word 'text "撤回")
              (tagged-word 'text "这个")
              (tagged-word 'text "消息"))

@@ -125,29 +125,29 @@
   (define hi-text "好，摸鱼人。")
   (send dc draw-text hi-text 296 base-y)
 
-
+  (define digit-weight 12)
   (define (draw-digital x y text color)
-    (send dc set-font (make-font #:size 12
+    (send dc set-font (make-font #:size 15
                                  #:family 'modern
                                  #:face "WW Digital"
-                                 #:weight 'semibold))
+                                 #:weight 'thin))
     (send dc set-text-foreground color)
     ; 为等宽分别画每个字符
     (for ([c text])
       (when (not (char-whitespace? c))
         (send dc draw-text (string c) x y))
-      (set! x (+ x 10))))
+      (set! x (+ x digit-weight))))
 
   (define (draw-time-unit x y text)
     (send dc set-text-foreground (rgb 0 0 0))
     (send dc set-font (make-font #:size 11
                                  #:face "FZLanTingHeiS-R-GB"
                                  #:family 'modern))
-    (send dc draw-text text x (+ y 2.5)))
+    (send dc draw-text text x (+ y 6)))
 
   ; 时间距离相关
   (define base-x 141)
-  (set! base-y 528)
+  (set! base-y 524)
   (define line-height 24.5)
   ; 下班
   (define (draw-offwork)
@@ -159,13 +159,13 @@
     (define x base-x)
     (when (> hour 0)
       (draw-digital x base-y (leftpad hour 3 " ") color)
-      (draw-time-unit (+ x 32) base-y "小时")
-      (set! x (+ x 64)))
+      (draw-time-unit (+ x (* 3 digit-weight) 2) base-y "小时")
+      (set! x (+ x (* 6 digit-weight) 4)))
     (define minute-text (if (> hour 0)
                             (number->string minute)
                             (leftpad minute 3 " ")))
     (draw-digital x base-y minute-text color)
-    (set! x (+ x (* (string-length minute-text) 10) 1))
+    (set! x (+ x (* (string-length minute-text) digit-weight) 1))
     (draw-time-unit x base-y "分钟"))
   
   ; 节假日剩余
@@ -175,7 +175,7 @@
                   (+ base-y (* line-height line))
                   (leftpad (get-value name) 3 " ")
                   color)
-    (draw-time-unit (+ base-x 32)
+    (draw-time-unit (+ base-x (* 3 digit-weight) 2)
                     (+ base-y (* line-height line))
                     postfix)
     (set! line (+ line 1)))

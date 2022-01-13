@@ -5,8 +5,8 @@
 
 (provide (prefix-out fish-basket-mgr: create-fish-basket)
          (prefix-out fish-basket-mgr: get-fish-basket-by-user-id)
-         s-stat-item
-         s-stat-result)
+         (struct-out s-stat-item)
+         (struct-out s-stat-result))
 
 (define (create-fish-basket user-id capacity)
   (connect-db)
@@ -19,7 +19,8 @@
               (string-append
                "insert into moyu_fish_basket(id, user_id, capacity, create_at)"
                "values($1, $2, $3, datetime('now'))")
-              id user-id capacity))
+              id user-id capacity)
+  fish-basket)
 
 (define (get-fish-basket-by-user-id user-id)
   (connect-db)
