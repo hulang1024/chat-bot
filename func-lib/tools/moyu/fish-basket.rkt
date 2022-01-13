@@ -63,7 +63,7 @@
       (for-each
        (λ (item)
          (match-define (list id name alias kind-weight-sum kind-count) item)
-         (define fish (s-fish id name alias))
+         (define fish (s-fish id name alias 0 0 0 0))
          (define stat-item (s-stat-item fish kind-weight-sum kind-count))
          (set! stat-items (append stat-items (cons stat-item null)))
          (set! weight (+ weight kind-weight-sum))

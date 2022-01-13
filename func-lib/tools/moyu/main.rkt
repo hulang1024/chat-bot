@@ -1,5 +1,7 @@
 #lang racket
-(require racket/draw
+(require 2htdp/image
+         (only-in racket/draw read-bitmap bitmap%)
+         (only-in mrlib/image-core render-image)
          math/base
          net/url
          "config.rkt"
@@ -55,7 +57,41 @@
          (send moyu-dc draw-bitmap-section-smooth banner-bitmap
                0 0 canvas-w canvas-h 0 0
                (send banner-bitmap get-width)
-               (send banner-bitmap get-height)))
+               (send banner-bitmap get-height))
+         ; 摸鱼结果信息
+         (define base-x 41)
+         (define x base-x)
+         (define base-y 290)
+         (define nickname-text (text/font (send sender get-nickname)
+                                          16 "blue" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
+         (render-image nickname-text moyu-dc x base-y)
+         (set! x (+ x (image-width nickname-text)))
+         
+         (cond
+           [fish
+            (define verb-num-text (text/font "摸到了一条"
+                                             16 "black" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
+            (render-image verb-num-text moyu-dc x base-y)
+            (set! x (+ x (image-width verb-num-text)))
+              
+            (define kg-text (text/font (format "~a公斤" (~r (s-fished-fish-weight fish) #:precision 2))
+                                       16 "orange" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
+            (render-image kg-text moyu-dc x base-y)
+            (set! x (+ x (image-width kg-text)))
+                            
+            (define de-text (text/font "的" 16 "black" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
+            (render-image de-text moyu-dc x base-y)
+            (set! x (+ x (image-width de-text)))
+                            
+            (define fish-name-text (text/font (format "~a。" (s-fish-name fish))
+                                              16 "red" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
+            (render-image fish-name-text moyu-dc x base-y)]
+           [else
+            (define info (text/font "本次未摸到鱼。"
+                                    16 "black" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
+            (render-image info moyu-dc x base-y)]))
+       (when (> action-delay 1000)
+         (send subject send-message "请稍等"))
        (define path (make-moyu-image (draw-fish-image fish)))
        (message-receipt-promise-then
         (send subject send-message (new image-message% [path path]))
@@ -66,20 +102,10 @@
         (case fish
           [(2) (send subject send-message "放入鱼护失败，原因：鱼护满了。")]
           [(3) (send subject send-message "鱼护满了。")]
-          [else 
-           (message-receipt-promise-then
-            (send subject send-message
-                  (format "~a 摸到了一条 ~a公斤 的 ~a。"
-                          (send sender get-nickname)
-                          (~r (s-fished-fish-weight fish) #:precision 2)
-                          (s-fish-name fish)))
-            (λ (_) (send-fish-image fish)))])]
+          [else
+           (send-fish-image fish)])]
        [else
-        (message-receipt-promise-then
-         (send subject send-message (format "~a 本次未摸到鱼。" (send sender get-nickname)))
-         (λ (_)
-           (when (< action-delay 600)
-             (send-fish-image #f))))])
+        (send-fish-image #f)])
      (user-manager:add-or-update sender))))
 
 

@@ -46,8 +46,7 @@
                   (date-day now) (date-month now) (date-year now)))
   (define offwork-rest-minutes
     (max 0 (floor (/ (- offwork-time (date->seconds now)) 60))))
-  `((after ,(format "~a分钟" 120))
-    (today ,today-text)
+  `((today ,today-text)
     (下班 ,offwork-rest-minutes)
     (周末 ,(max 0 (- 5 (date-week-day now))))
     ,@(map (λ (h) (list h (get-holiday-rest-day h)))
@@ -107,23 +106,16 @@
   (define moyu-bitmap (read-bitmap template-path))
   (define dc (send moyu-bitmap make-dc))
 
-  ; 多少时间之后
-  (send dc set-font (make-font #:size 12.5
-                               #:family	'modern
-                               #:face "FZLanTingHeiS-R-GB"))
-  (send dc set-text-foreground (rgb 10 10 10))
-  (send dc draw-text (get-value 'after) 106 368)
-
   ; 今日
-  (send dc set-font (make-font #:size 11
+  (send dc set-font (make-font #:size 12
                                #:family	'modern
                                #:face "FZLanTingHeiS-R-GB"))
   (send dc set-text-foreground (rgb 18 128 20))
-  (define base-y 431)
-  (send dc draw-text (get-value 'today) 170 base-y)
+  (define base-y 409)
+  (send dc draw-text (get-value 'today) 178 base-y)
   (send dc set-text-foreground (rgb 0 0 0))
   (define hi-text "好，摸鱼人。")
-  (send dc draw-text hi-text 296 base-y)
+  (send dc draw-text hi-text 315 base-y)
 
   (define digit-weight 12)
   (define (draw-digital x y text color)
@@ -146,8 +138,8 @@
     (send dc draw-text text x (+ y 6)))
 
   ; 时间距离相关
-  (define base-x 141)
-  (set! base-y 524)
+  (define base-x 138)
+  (set! base-y 521)
   (define line-height 24.5)
   ; 下班
   (define (draw-offwork)

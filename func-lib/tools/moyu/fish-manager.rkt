@@ -9,7 +9,7 @@
          get-fish-image-path-by-id)
 
 
-(struct s-fish (id name alias) #:transparent)
+(struct s-fish (id name alias weight-min weight-max appear-pr price) #:transparent)
 ; 所有鱼
 (define fishes #f)
 
@@ -44,5 +44,9 @@
      (λ (get-value)
        (s-fish (get-value "id")
                (get-value "name")
-               (get-value "alias")))))
+               (get-value "alias")
+               (get-value "weight_min")
+               (get-value "weight_max")
+               (get-value "appear_pr")
+               (get-value "price")))))
   (mapping-result (apply query db-conn stmt args)))

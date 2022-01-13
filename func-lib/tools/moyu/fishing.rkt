@@ -28,7 +28,9 @@
         [(= (random-integer 0 2) 0)
          (define user-id (send user get-id))
          (define fish (list-random-ref (fish-mgr:get-fishes)))
-         (define fish-weight (max (floor (* (random) 100)) 1))
+         (define fish-weight (/ (random (inexact->exact (* (s-fish-weight-min fish) 1000))
+                                        (inexact->exact (+ (* (s-fish-weight-max fish) 1000) 1)))
+                                1000))
          (define fish-basket (fish-basket-mgr:get-fish-basket-by-user-id user-id))
          (when (not fish-basket)
            (set! fish-basket (fish-basket-mgr:create-fish-basket user-id 60)))
@@ -42,6 +44,10 @@
                (s-fished-fish (s-fish-id fish)
                               (s-fish-name fish)
                               (s-fish-alias fish)
+                              (s-fish-weight-min fish)
+                              (s-fish-weight-max fish)
+                              (s-fish-appear-pr fish)
+                              (s-fish-price fish)
                               fish-weight)])])]
         [else #f]))
     
@@ -82,7 +88,7 @@
                              (beside/align "bottom"
                                            (text/font (format "共~a条" (s-stat-item-count stat-item))
                                                       11 "red" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f)
-                                           (text/font (format " ~a公斤" (s-stat-item-weight stat-item))
+                                           (text/font (format " ~a公斤" (~r (s-stat-item-weight stat-item) #:precision 2))
                                                       11 "crimson" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))))
               (define text-bm (make-bitmap (image-width text-image) (image-height text-image)))
               (define text-bdc (send text-bm make-dc))
@@ -96,7 +102,7 @@
            [(> (s-stat-result-count stat-result) 0)
             (add-message (format "摸到鱼共计~a条，~a公斤。\n"
                                  (s-stat-result-count stat-result)
-                                 (s-stat-result-weight stat-result)))
+                                 (~r (s-stat-result-weight stat-result) #:precision 2)))
             (define image (render-stat-image stat-result))
             (define path (build-path work-path "stat.png"))
             (send image save-file path 'png 100)

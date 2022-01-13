@@ -21,7 +21,11 @@ create table remind (
 create table fish (
    id int primary key not null,
    name varchar(20) not null,
-   alias varchar(100)
+   alias varchar(100),
+   weight_min float not null,
+   weight_max float not null,
+   appear_pr float not null,
+   price float not null
 );
 
 -- 鱼护（篮）
