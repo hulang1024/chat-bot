@@ -1,3 +1,10 @@
+-- 用户
+create table user (
+   id int primary key not null,
+   nickname varchar(60) not null,
+   update_at datetime not null
+);
+
 -- 提醒
 create table remind (
    id int primary key not null,
