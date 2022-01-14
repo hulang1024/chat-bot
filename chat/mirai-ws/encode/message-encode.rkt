@@ -118,8 +118,8 @@
 (define (null-ifnot v)
   (if v v (json-null)))
 
-(define (encode-path v)
-  (if (path-string? v) (path->string v) (null-ifnot v)))
+(define (encode-path path)
+  (if (path? path) (path->string path) (null-ifnot path)))
 
 (define (encode-url url)
   (if (string? url) (string-replace url " " "%20") url))

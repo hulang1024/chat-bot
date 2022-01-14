@@ -135,13 +135,13 @@
       (for-each
        (λ (row)
          (match-define (list user-id nickname weight count) row)
-         (add-message (format "#~A ~A ~A条，~A公斤\n"
+         (add-message (format "#~A ~A ~A条 ~A公斤\n"
                               (~a no
                                   #:align 'left #:width 2 #:pad-string " ")
                               (~a nickname
                                   #:align 'left #:width 12 #:pad-string " ")
                               count
-                              weight))
+                              (~r weight #:precision 2)))
          (set! no (+ no 1)))
        (query-ranking-by by top)))))
 
