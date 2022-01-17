@@ -31,12 +31,16 @@
      (set-remind subject remind #:event event)
      (add-message (make-quote-reply (send event get-message)))
      (define sender (send event get-sender))
-     (define self? (= (send sender get-id) (s-remind-target-uid remind)))
+     (define target-uid (s-remind-target-uid remind))
+     (define self? (= (send sender get-id) target-uid))
      (when (and (is-a? subject group%) self?)
-       (add-message (new at% [target (s-remind-target-uid remind)])))
+       (add-message (new at% [target target-uid])))
      (add-message (format " 好的，将在~a提醒~a~a"
                           (date-seconds->short-string (s-remind-time remind) now)
-                          (if self? "你" "他")
+                          (cond
+                            [(= target-uid 0) "大家"]
+                            [self? "你"]
+                            [else "他"])
                           (s-remind-content remind)))]
     [else
      (add-message "时间已过")]))
@@ -86,11 +90,15 @@
       (define add-message (create-add-message mcb))
       (define source-message (if event (send event get-message) #f))
       (define content (s-remind-content remind))
-      (when (and (= t 1) source-message)
+      (define target-everyone? (= (s-remind-target-uid remind) 0))
+      (when (and (and (= t 1) source-message)
+                 (not target-everyone?))
         (add-message (make-quote-reply source-message)))
-      (when (is-a? subject group%)
+      (when (and (is-a? subject group%)
+                 (not target-everyone?))
         (add-message (new at% [target (s-remind-target-uid remind)])))
-      (when (or (= t 1) (string=? content ""))
+      (when (and (or (= t 1) (string=? content ""))
+                 (not target-everyone?))
         (add-message " 时间到了"))
       (when (non-empty-string? content)
         (add-message (string-append " " content)))
@@ -195,7 +203,8 @@
        (define add-message (create-add-message mcb))
        (add-message (make-quote-reply (send event get-message)))
        (add-message "不能提醒这个时间哦")
-       (send subject send-message (send mcb build))]))
+       (send subject send-message (send mcb build))
+       (void)]))
   (match words
     [(or (list (tagged-word 'time time)
                (tagged-word 'text (or "叫" "提醒"))
@@ -208,10 +217,26 @@
      (make-args (send sender get-id) time content)]
     [(list (tagged-word 'time time)
            (tagged-word 'text (or "叫" "提醒"))
+           (tagged-word 'text "大家")
+           content ...)
+     (make-args 0 time content)]
+    [(list (tagged-word 'time time)
+           (tagged-word 'text (or "叫" "提醒"))
            (tagged-word 'wp "@")
            (tagged-word 'number other-uid)
            content ...)
      (make-args other-uid time content)]
+    [(list (tagged-word 'time time)
+           (tagged-word 'text (or "叫" "提醒"))
+           (tagged-word 'wp "@")
+           content ...)
+     (define mcb (new message-chain-builder%))
+     (define add-message (create-add-message mcb))
+     (add-message (make-quote-reply (send event get-message)))
+     (add-message (face-from-id 176))
+     (add-message "我不知道是谁，请重新@加qq号")
+     (send subject send-message (send mcb build))
+     (void)]
     [else #f]))
 
 
