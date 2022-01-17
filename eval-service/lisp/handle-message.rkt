@@ -13,13 +13,14 @@
   (define expr-str #f)
   (define has-quote-reply? #f)
   (cond
-    [(regexp-match #rx"^\\s*#rkt.+" m-str)
+    [(regexp-match? #rx"^\\s*#rkt.+" m-str)
      (set! expr-str (string-trim (substring m-str 4)))
      (set! has-quote-reply? #t)]
-    [(regexp-match #rx"^\\s*!rkt.+" m-str)
+    [(regexp-match? #rx"^\\s*!rkt.+" m-str)
      (set! expr-str (string-trim (substring m-str 4)))
      (set! has-quote-reply? #f)]
-    [(regexp-match #rx"^\\s*\\(.+\\)" m-str)
+    ; 匹配一对括号。不包括[]，因为会和消息中的"[图片]"等冲突。
+    [(regexp-match? #rx"^\\s*[（\\(].+[\\)）]" m-str)
      (set! expr-str (string-trim m-str))])
   (if (and expr-str (not (string=? expr-str "")))
       (execute-program event add-message expr-str has-quote-reply?)
@@ -30,13 +31,14 @@
   (handle-api-result (eval-program expr
                                    "global"
                                    (send event get-sender))
+                     expr
                      event
                      add-message
                      has-quote-reply?
                      quiet-fail?))
 
 
-(define (handle-api-result api-result event add-message has-quote-reply? quiet-fail?)
+(define (handle-api-result api-result expr event add-message has-quote-reply? quiet-fail?)
   (define ok? (send api-result ok?))
   (define value (send api-result get-value))
   (define output (send api-result get-output))
@@ -87,8 +89,13 @@
     [quiet-fail? #f]
     [else
      (define error (send api-result get-error))
+     (define exn-data (send api-result get-data))
      (add-message "🎈")
-     (add-message error)]))
+     (cond
+       [(hash? exn-data)
+        (error-handler expr exn-data error add-message)]
+       [else (add-message error)])]))
+
 
 (define (output-length-good? output)
   (define text-line-max 61)
@@ -112,3 +119,29 @@
   (and (< text-line-count text-line-max)
        (< image-count image-max)
        (< audio-count audio-max)))
+
+
+(define (error-handler expr exn-data error add-message)
+  (define exn-type (hash-ref exn-data 'type))
+  (define (guess-wide-bracket text)
+    (cond
+      [(regexp-match? #rx"[（）]" text)
+       "\n是不是把英文括号`()`打成中文括号`（）`了？"]
+      [else ""]))
+  
+  (case exn-type
+    [("read")
+     (cond
+       [(string-contains? error "expected a `)` to close `(`")
+        (add-message (string-append "少了右括号？" (guess-wide-bracket expr)))]
+       [else
+        (add-message (string-append "读取阶段错误\n" error))])]
+    [("syntax")
+     (add-message (string-append "语法错误\n" error))]
+    [("variable")
+     (define id (hash-ref exn-data 'id))
+     (add-message (string-append (format "【~a】未定义" id) (guess-wide-bracket expr)))]
+    [("out-of-memory")
+     (add-message "内存不够了")]
+    [else
+     (add-message error)]))
