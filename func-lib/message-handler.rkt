@@ -66,9 +66,9 @@
   
   (define text-words (map tagged-word/text-text tagged-words))
 
-  (define matched #f)
-  (when (not matched)
-    (set! matched #t)
+  (define matched? #f)
+  (when (not matched?)
+    (set! matched? #t)
     (match text-words
       [(list (or "帮助" "菜单" "功能"))
        (add-message say-to-me)]
@@ -130,9 +130,9 @@
                  sender-id
                  add-message)]
     
-      [else (set! matched #f)]))
-  (when (not matched)
-    (set! matched #t)
+      [else (set! matched? #f)]))
+  (when (not matched?)
+    (set! matched? #t)
     (match tagged-words
       [(list (tagged-word 'text "计算")
              (tagged-word 'text "时间")
@@ -162,8 +162,12 @@
                     (send (send event get-subject) send-message "撤回失败咯"))))]
          [else
           (add-message "哪个消息呀？")])]
-      [else (set! matched #f)]))
-  (when (not matched)
-    (set! matched (execute-program event add-message (string-join text-words "") #f #t)))
-  matched)
+      [else (set! matched? #f)]))
+  (when (not matched?)
+    (define message (send event get-message))
+    (define message-string (send message content-to-string))
+    (define expr-string (substring message-string
+                                   (tagged-word/text-start (first tagged-words))))
+    (set! matched? (execute-program event add-message expr-string #f #t)))
+  matched?)
   

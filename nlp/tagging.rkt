@@ -19,7 +19,7 @@
 
 (struct tagged-word (type data) #:transparent)
 
-(struct tagged-word/text tagged-word (text))
+(struct tagged-word/text tagged-word (text start end) #:transparent)
 
 (struct time-expr
   (; 表达运算
@@ -253,10 +253,15 @@
        time-exprs]))
   
   (let ([i (box 0)]
+        [j 0]
         [result null])
     (define (add-word type data text)
+      (define text-length (string-length text))
       (when (or (not (equal? type 'space)) (not remove-space?))
-        (set! result (append result (cons (tagged-word/text type data text) null)))))
+        (set! result (append result
+                             (cons (tagged-word/text type data text j (+ j text-length))
+                                   null))))
+      (set! j (+ j text-length)))
     (define (add-raw-word word)
       (add-word (s-word-type word)
                 (if (equal? (s-word-type word) 'number)
