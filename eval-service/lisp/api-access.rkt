@@ -16,7 +16,6 @@
     (define/public (get-code) code)
     (define/public (get-data) data)
     (define/public (get-output) output)
-    (define/public (get-value) value)
     (define/public (get-error) error)
     (define/public (set-error text) (set! error text))
 
@@ -43,5 +42,4 @@
        [code (get-value 'code 1)]
        [data (get-value 'data)]
        [output (get-value 'output "")]
-       [value (get-value 'value)]
        [error (get-value 'error "")]))

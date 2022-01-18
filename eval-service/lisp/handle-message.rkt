@@ -40,50 +40,40 @@
 
 (define (handle-api-result api-result expr event add-message has-quote-reply? quiet-fail?)
   (define ok? (send api-result ok?))
-  (define value (send api-result get-value))
   (define output (send api-result get-output))
-  (define length-good? (if ok? (output-length-good? (append value output)) #f))
+  (define length-good? (if ok? (output-length-good? output) #f))
   
   (cond
     [(and ok? length-good?)
-     (define mcb (new message-chain-builder%))
-     (define add-message (create-add-message mcb))
-     (define (convert-message items)
-       (for-each
-        (λ (item)
-          (add-message
-           (match (hash-ref item 'type "text")
-             ["image" (new image-message%
-                           [path (hash-ref item 'path)]
-                           [url (hash-ref item 'url)])]
-             ["audio" (new voice-message%
-                           [path (hash-ref item 'path)]
-                           [url (hash-ref item 'url)])]
-             [else (new mirai-code-message% [code (hash-ref item 'content)])])))
-        items))
-     (define has-output (not (null? output)))
-     (when has-quote-reply?
-       (add-message (make-quote-reply (send event get-message))))
-     (convert-message output)
-     (when (and (not (null? value))
-                (or (not has-output)
-                    (not (match value
-                           [(list (hash-table ('type "text") ('content "#<void>"))) #t]
-                           [else #f]))))
-       (when has-output
-         (add-message "\n"))
-       (convert-message value))
-
-     (define message-chain (send mcb build))
-     (message-receipt-promise-then
-      (send (send event get-subject) send-message (send message-chain trim))
-      (λ (_)
-        (for-each
-         (λ (m)
-           (when (and (or (is-a? m image-message%) (is-a? m voice-message%))
-                      (path-string? (send m get-path)))
-             (delete-file (send m get-path))))
-         (send message-chain to-list))))]
+     (when (not (null? output))
+       (define mcb (new message-chain-builder%))
+       (define add-message (create-add-message mcb))
+       (define (convert-message items)
+         (for-each
+          (λ (item)
+            (add-message
+             (match (hash-ref item 'type "text")
+               ["image" (new image-message%
+                             [path (hash-ref item 'path)]
+                             [url (hash-ref item 'url)])]
+               ["audio" (new voice-message%
+                             [path (hash-ref item 'path)]
+                             [url (hash-ref item 'url)])]
+               [else (new mirai-code-message% [code (hash-ref item 'content)])])))
+          items))
+       (when has-quote-reply?
+         (add-message (make-quote-reply (send event get-message))))
+       (convert-message output)
+       (define message-chain (send mcb build))
+       (message-receipt-promise-then
+        (send (send event get-subject) send-message (send message-chain trim))
+        (λ (_)
+          (for-each
+           (λ (m)
+             (when (and (or (is-a? m image-message%) (is-a? m voice-message%))
+                        (path-string? (send m get-path)))
+               (delete-file (send m get-path))))
+           (send message-chain to-list)))))]
     [(and ok? (not length-good?))
      (add-message "消息太长啦")]
     [quiet-fail? #f]
