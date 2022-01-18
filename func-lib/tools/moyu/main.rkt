@@ -44,14 +44,19 @@
               (read-bitmap fish-image-path)]
              [else
               (define category (if (= (random-integer 0 2) 0) "mm" "scenery"))
-              (define-values (status headers in)
-                (http-sendrecv/url (string->url (get-random-pic-url category))))
-              (make-object bitmap% in)]))
+              (define url (get-random-pic-url category))
+              (cond
+                [url
+                 (define-values (status headers in)
+                   (http-sendrecv/url (string->url url)))
+                 (make-object bitmap% in)]
+                [else #f])]))
 
-         (send moyu-dc draw-bitmap-section-smooth cover-bitmap
-               0 0 canvas-w canvas-h 0 0
-               (send cover-bitmap get-width)
-               (send cover-bitmap get-height))
+         (when cover-bitmap
+           (send moyu-dc draw-bitmap-section-smooth cover-bitmap
+                 0 0 canvas-w canvas-h 0 0
+                 (send cover-bitmap get-width)
+                 (send cover-bitmap get-height)))
 
          (define banner-bitmap (read-bitmap (build-path work-path "banner.png")))
          (send moyu-dc draw-bitmap-section-smooth banner-bitmap

@@ -79,9 +79,11 @@
 
 (define (get-image-redirect-url url)
   (define-values (status headers in)
-    (http-sendrecv/url (string->url url)))
+    (with-handlers ([(const #t)
+                     (λ (_) (values #f #f #f))])
+      (http-sendrecv/url (string->url url))))
   (cond
-    [(string-contains? (bytes->string/utf-8 status) "302")
+    [(and status (string-contains? (bytes->string/utf-8 status) "302"))
      (define location (get-header-value #"Location" headers))
      location]
     [else #f]))
