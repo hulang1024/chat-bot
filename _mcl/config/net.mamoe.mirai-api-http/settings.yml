@@ -1,0 +1,19 @@
+adapters:
+  - ws
+debug: false
+enableVerify: false
+verifyKey: 123456
+singleMode: true
+cacheSize: 4096
+adapterSettings:
+  ws:
+    host: localhost
+    port: 8899
+    reservedSyncId: -1
+
+
+heartbeat:
+  enable: true
+  delay: 1000
+  period: 15000
+  destinations: []
