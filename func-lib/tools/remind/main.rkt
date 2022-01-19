@@ -8,7 +8,8 @@
          "../../../timer.rkt"
          "../../../chat/message/main.rkt"
          "../../../chat/contact/group.rkt"
-         "../../../chat/contact/friend.rkt")
+         "../../../chat/contact/friend.rkt"
+         "../../../eval-service/lisp/handle-message.rkt")
 
 (provide remind-load
          create-remind
@@ -85,27 +86,41 @@
     (cancel-timer (s-remind-id remind))
     (remind-mgr:delete (s-remind-id remind))
     
-    (define (repeat-thing t)
+    (define (repeat-thing repeat-current)
       (define mcb (new message-chain-builder%))
       (define add-message (create-add-message mcb))
       (define source-message (if event (send event get-message) #f))
       (define content (s-remind-content remind))
       (define target-everyone? (= (s-remind-target-uid remind) 0))
-      (when (and (and (= t 1) source-message)
+      (when (and (and (= repeat-current 1) source-message)
                  (not target-everyone?))
         (add-message (make-quote-reply source-message)))
       (when (and (is-a? subject group%)
                  (not target-everyone?))
         (add-message (new at% [target (s-remind-target-uid remind)])))
-      (when (and (or (= t 1) (string=? content ""))
+      (when (and (or (= repeat-current 1) (string=? content ""))
                  (not target-everyone?))
         (add-message " 时间到了"))
       (when (non-empty-string? content)
-        (add-message (string-append " " content)))
-      (send subject send-message (send mcb build)))
+        (define code-prefix "并执行")
+        (displayln content)
+        (cond
+          [(string-prefix? content code-prefix)
+           (when (= repeat-current 1)
+             (define mc (send mcb build))
+             (when (not (send mc empty?))
+               (send subject send-message mc)))
+           (define expr (substring content (string-length code-prefix)))
+           (define ok? (execute-program subject #f source-message add-message expr #f))
+           (when (not ok?)
+             (send subject send-message (send mcb build))
+             (send repeat-timer cancel))]
+          [else
+           (add-message (string-append " " content))
+           (send subject send-message (send mcb build))])))
     (define repeat-timer (new repeat-timer%
                        [on-repeat repeat-thing]
-                       [times 3]
+                       [times (s-remind-repeat-times remind)]
                        [seconds 1]))
     (send repeat-timer start))
 
@@ -185,17 +200,22 @@
   (define subject (send event get-subject))
   (define sender (send event get-sender))
   
-  (define (make-args target-uid time-word content)
+  (define (make-args target-uid time-word content [times 3] [code? #f])
     (define ret-date (time-word->date time-word))
     (cond
       [ret-date
+       (define message (send event get-message))
+       (define message-string (send message content-to-string))
+       (define content-string (string-trim
+                               (substring message-string
+                                          (tagged-word/text-start (first content)))))
        (list event
              (s-remind (remind-mgr:generate-id)
                        (date->seconds ret-date)
                        target-uid
                        (if (is-a? subject group%) (send subject get-id) 0)
-                       3
-                       (string-trim (string-join (map tagged-word/text-text content) ""))
+                       (min 10 times)
+                       (if code? (string-append "并执行" content-string) content-string)
                        (send sender get-id)
                        null))]
       [else
@@ -220,6 +240,12 @@
            (tagged-word 'text "大家")
            content ...)
      (make-args 0 time content)]
+    [(list (tagged-word 'time time)
+           (tagged-word 'text "执行")
+           (tagged-word 'number times)
+           (tagged-word 'text "次")
+           content ...)
+     (make-args 0 time content times #t)]
     [(list (tagged-word 'time time)
            (tagged-word 'text (or "叫" "提醒"))
            (tagged-word 'wp "@")

@@ -23,22 +23,24 @@
     [(regexp-match? #rx"^\\s*[（\\(].+[\\)）]" m-str)
      (set! expr-str (string-trim m-str))])
   (if (and expr-str (not (string=? expr-str "")))
-      (execute-program event add-message expr-str has-quote-reply?)
+      (execute-program (send event get-subject)
+                       (send event get-sender)
+                       (send event get-message)
+                       add-message expr-str has-quote-reply?)
       #f))
 
 
-(define (execute-program event add-message expr has-quote-reply? [quiet-fail? #f])
-  (handle-api-result (eval-program expr
-                                   "global"
-                                   (send event get-sender))
+(define (execute-program subject sender source-message add-message expr has-quote-reply? [quiet-fail? #f])
+  (handle-api-result (eval-program expr "global" sender)
                      expr
-                     event
+                     subject
+                     source-message
                      add-message
                      has-quote-reply?
                      quiet-fail?))
 
 
-(define (handle-api-result api-result expr event add-message has-quote-reply? quiet-fail?)
+(define (handle-api-result api-result expr subject source-message add-message has-quote-reply? quiet-fail?)
   (define ok? (send api-result ok?))
   (define output (send api-result get-output))
   (define length-good? (if ok? (output-length-good? output) #f))
@@ -61,12 +63,12 @@
                              [url (hash-ref item 'url)])]
                [else (new mirai-code-message% [code (hash-ref item 'content)])])))
           items))
-       (when has-quote-reply?
-         (add-message (make-quote-reply (send event get-message))))
+       (when (and source-message has-quote-reply?)
+         (add-message (make-quote-reply source-message)))
        (convert-message output)
        (define message-chain (send mcb build))
        (message-receipt-promise-then
-        (send (send event get-subject) send-message (send message-chain trim))
+        (send subject send-message (send message-chain trim))
         (λ (_)
           (for-each
            (λ (m)
@@ -84,7 +86,8 @@
      (cond
        [(hash? exn-data)
         (error-handler expr exn-data error add-message)]
-       [else (add-message error)])]))
+       [else (add-message error)])
+     #f]))
 
 
 (define (output-length-good? output)

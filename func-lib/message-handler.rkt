@@ -168,6 +168,9 @@
     (define message-string (send message content-to-string))
     (define expr-string (substring message-string
                                    (tagged-word/text-start (first tagged-words))))
-    (set! matched? (execute-program event add-message expr-string #f #t)))
+    (set! matched? (execute-program (send event get-subject)
+                                    (send event get-sender)
+                                    (send event get-message)
+                                    add-message expr-string #f #t)))
   matched?)
   
