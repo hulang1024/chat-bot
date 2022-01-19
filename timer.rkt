@@ -34,7 +34,8 @@
     (define/public (cancel)
       (when timeout
         (cancel-timeout! timeout)
-        (set! timeout #f)))
+        (set! timeout #f)
+        (set! current times)))
 
     (define (set-timeout)
       (set! timeout
