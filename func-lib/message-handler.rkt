@@ -4,7 +4,7 @@
          "../chat/contact/group.rkt"
          "../nlp/tagging.rkt"
          "../nlp/time.rkt"
-         "../eval-service/lisp/handle-message.rkt"
+         "../eval-service/lisp/main.rkt"
          "say-to-me.rkt"
          "tools/weather.rkt"
          "tools/pic.rkt"
@@ -129,6 +129,9 @@
                  (if (null? osu-uid) #f (car osu-uid))
                  sender-id
                  add-message)]
+
+      [(list "重启" "eval" "服务器")
+       (lisp-eval-server:restart sender-id add-message)]
     
       [else (set! matched? #f)]))
   (when (not matched?)
