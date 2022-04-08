@@ -48,8 +48,10 @@
               (cond
                 [url
                  (define-values (status headers in)
-                   (http-sendrecv/url (string->url url)))
-                 (make-object bitmap% in)]
+                   (with-handlers ([(const #t)
+                                    (λ (_) (values #f #f #f))])
+                     (http-sendrecv/url (string->url url))))
+                 (and status (make-object bitmap% in))]
                 [else #f])]))
 
          (when cover-bitmap
