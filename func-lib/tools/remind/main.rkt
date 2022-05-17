@@ -103,7 +103,6 @@
         (add-message " 时间到了"))
       (when (non-empty-string? content)
         (define code-prefix "并执行")
-        (displayln content)
         (cond
           [(string-prefix? content code-prefix)
            (when (= repeat-current 1)

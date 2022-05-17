@@ -6,6 +6,7 @@
          "../nlp/time.rkt"
          "../eval-service/lisp/main.rkt"
          "say-to-me.rkt"
+         "reply.rkt"
          "tools/weather.rkt"
          "tools/pic.rkt"
          "tools/joke.rkt"
@@ -22,43 +23,47 @@
 (define (handle-message bot event add-message)
   (define message (send event get-message))
   (define subject (send event get-subject))
-  (when (or (not (is-a? subject group%))
-            (send bot call-me? message))
-    (define message-content (send message content-to-string))
-    (define tagged-words (cut-tagged-words message-content))
-    (define (remove-lead-wps)
-      (set! tagged-words
-            (let loop ([words tagged-words])
-              (if (and (not (null? words))
-                       (equal? 'wp (tagged-word-type (car words))))
-                  (loop (cdr words))
-                  words))))
-    (match tagged-words
-      [(list (tagged-word 'wp "@") (tagged-word 'number id) _ ...)
-       (when (= id (send bot get-id))
-         (set! tagged-words (list-tail tagged-words 2)))]
-      [else (remove-lead-wps)])
-    (when (and (not (null? tagged-words))
-               (string=? (tagged-word/text-text (first tagged-words))
-                         (send bot get-nickname)))
-      (set! tagged-words (list-tail tagged-words 1))
-      (remove-lead-wps))
-    (cond
-      [(null? tagged-words)
-       (cond
-         [(> (random) 0.5)
-          (add-message (face-from-id 32))
-          (add-message "有啥事?")]
-         [else
-          (add-message say-to-me)])]
-      [else
-       (define handled (main-handle-message bot event tagged-words add-message))
-       (cond
-         [handled #t]
-         [else
-          (add-message (make-quote-reply message))
-          (add-message (face-from-id 176))
-          (add-message "我还不懂")])])))
+  (define message-content (send message content-to-string))
+  (cond
+    [(or (not (is-a? subject group%))
+         (send bot call-me? message))
+     (define tagged-words (cut-tagged-words message-content))
+     (define (remove-lead-wps)
+       (set! tagged-words
+             (let loop ([words tagged-words])
+               (if (and (not (null? words))
+                        (equal? 'wp (tagged-word-type (car words))))
+                   (loop (cdr words))
+                   words))))
+     (match tagged-words
+       [(list (tagged-word 'wp "@") (tagged-word 'number id) _ ...)
+        (when (= id (send bot get-id))
+          (set! tagged-words (list-tail tagged-words 2)))]
+       [else (remove-lead-wps)])
+     (when (and (not (null? tagged-words))
+                (string=? (tagged-word/text-text (first tagged-words))
+                          (send bot get-nickname)))
+       (set! tagged-words (list-tail tagged-words 1))
+       (remove-lead-wps))
+     (cond
+       [(null? tagged-words)
+        (cond
+          [(> (random) 0.5)
+           (add-message (face-from-id 32))
+           (add-message "有啥事?")]
+          [else
+           (add-message say-to-me)])]
+       [else
+        (define handled (main-handle-message bot event tagged-words add-message))
+        (cond
+          [handled #t]
+          [else
+           (set! message-content (string-replace message-content (send bot get-nickname) ""))
+           (add-message (reply-talk message-content))])])]
+    [(and (not (regexp-match? #rx"^\\s*\\[.+\\]" message-content))
+          (not (send message get at%))
+          (reply:is-time?))
+     (add-message (reply-talk message-content))]))
 
 (define (main-handle-message bot event tagged-words add-message)
   (define sender (send event get-sender))
@@ -100,11 +105,11 @@
        (moyu-my-stat event)]
       [(list "清空" "我" "的" "鱼")
        (moyu-clear-my-fish-basket event add-message)]
-      [(list "摸鱼" "排名")
+      [(list "摸鱼" (or "排名" "排行" "排行榜"))
        (moyu-ranking 'overall event add-message)]
-      [(list "摸鱼" "排名" "按" "条数")
+      [(list "摸鱼" (or "排名" "排行") "按" "条数")
        (moyu-ranking 'count event add-message)]
-      [(list "摸鱼" "排名" "按" "重量")
+      [(list "摸鱼" (or "排名" "排行") "按" "重量")
        (moyu-ranking 'weight event add-message)]
       [(list "摸鱼" "帮助")
        (moyu-help event add-message)]
@@ -132,7 +137,15 @@
 
       [(list "重启" "eval" "服务器")
        (lisp-eval-server:restart sender-id add-message)]
-    
+      [(list "一直" "接话")
+       (reply:set-active-mode "reply")]
+      [(list "活跃" "点")
+       (reply:set-active-mode "active")]
+      [(list "正常" "点")
+       (reply:set-active-mode "normal")]
+      [(list "安静")
+       (reply:set-active-mode "quiet")]
+      [(list "当前" "活跃" "模式") (add-message reply:active-mode)]
       [else (set! matched? #f)]))
   (when (not matched?)
     (set! matched? #t)
