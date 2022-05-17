@@ -166,8 +166,6 @@
                b-words
                f-words)])]
        [else
-        (displayln f-words)
-        (displayln b-words)
         ; 否则，返回词数较少的那个
         (if (> f-total b-total)
             b-words

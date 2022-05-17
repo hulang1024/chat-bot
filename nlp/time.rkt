@@ -83,7 +83,6 @@
       [else #t]))
 
   (define (part-name-value->date)
-    ; todo: 小数时有问题，待解决
     (date (hash-ref part-name-value 'second)
           (hash-ref part-name-value 'minute)
           (hash-ref part-name-value 'hour)
@@ -121,7 +120,9 @@
          ['= (hash-set! part-name-value part-name
                         (time-expr-value expr))])))
    time-exprs)
-  (if ok? (part-name-value->date) #f))
+  (and ok?
+       (with-handlers ([(const #t) (λ (v) #f)])
+         (part-name-value->date))))
 
 
 (define (date-seconds->short-string time now)
