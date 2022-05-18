@@ -1,7 +1,8 @@
 #lang racket
 (require math/base
          net/url
-         json)
+         json
+         "../config.rkt")
 
 (provide reply-talk
          (prefix-out reply: is-time?)
@@ -20,7 +21,7 @@
                             msg))))
     (define api-result (string->jsexpr (port->string in)))
     (define res (hash-ref api-result 'content))
-    (string-replace res "{br}" "\n" #:all? #t)))
+    (string-replace (string-replace res "{br}" "\n" #:all? #t) "菲菲" bot-nickname #:all? #t)))
 
 (define (is-time?)
   (define max
