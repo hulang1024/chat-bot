@@ -59,11 +59,11 @@
           [handled #t]
           [else
            (set! message-content (string-replace message-content (send bot get-nickname) ""))
-           (add-message (reply-talk message-content))])])]
+           (reply-talk message-content add-message)])])]
     [(and (not (regexp-match? #rx"^\\s*\\[.+\\]" message-content))
           (not (send message get at%))
           (reply:is-time?))
-     (add-message (reply-talk message-content))]))
+     (reply-talk message-content add-message)]))
 
 (define (main-handle-message bot event tagged-words add-message)
   (define sender (send event get-sender))
