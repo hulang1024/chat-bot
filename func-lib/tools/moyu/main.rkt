@@ -11,7 +11,8 @@
          "fish-manager.rkt"
          "../pic.rkt"
          "../../../chat/message/main.rkt"
-         "../../../chat/contact/message-send.rkt")
+         "../../../chat/contact/message-send.rkt"
+         "../../consumer-manager.rkt")
 
 (provide moyu
          moyu-my-stat
@@ -29,7 +30,16 @@
   (thread
    (λ ()
      (define start (current-inexact-milliseconds))
-     (define fish (send fishing-game fishing sender))
+     (define fish
+       (cond
+         [(and (> (consumer-mgr:query-times "moyu" sender) 0)
+               (< (consumer-mgr:query-to-now "moyu" sender) (* 60 5))) 4]
+         [(> (consumer-mgr:query-times "moyu" sender) 10) 5]
+         [else
+          (consumer-mgr:use-func "moyu" sender)
+          (send fishing-game fishing sender)]))
+
+
      (define (send-fish-image fish)
        (define ((draw-fish-image fish) moyu-bitmap)
          (define moyu-dc (send moyu-bitmap make-dc))
@@ -104,15 +114,20 @@
         (send subject send-message (new image-message% [path path]))
         (λ (_)
           (set! action-delay (- (current-inexact-milliseconds) start)))))
-     (cond
-       [fish
+     (match fish
+       [(? number? _)
+        (define mcb (new message-chain-builder%))
+        (define add-message (create-add-message mcb))
+        (add-message (new at% [target (send sender get-id)]))
+        (add-message " ")
         (case fish
-          [(2) (send subject send-message "放入鱼护失败，原因：鱼护满了。")]
-          [(3) (send subject send-message "鱼护满了。")]
-          [else
-           (send-fish-image fish)])]
+          [(2) (add-message "放入鱼护失败，原因：鱼护满了。")]
+          [(3) (add-message "鱼护满了。")]
+          [(4) (add-message "技能冷却5分钟中")]
+          [(5) (add-message "今日摸鱼次数(共10次)已用完了哦")])
+        (send subject send-message (send mcb build))]
        [else
-        (send-fish-image #f)])
+        (send-fish-image fish)])
      (user-manager:add-or-update sender))))
 
 

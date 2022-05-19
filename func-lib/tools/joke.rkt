@@ -18,4 +18,6 @@
   (define api-result (string->jsexpr (port->string in)))
   (define result (hash-ref api-result 'result))
 
-  (add-message (hash-ref (list-ref result 0) 'content)))
+  (add-message (if (list? result)
+                   (hash-ref (list-ref result 0) 'content)
+                   "请稍后重试")))
