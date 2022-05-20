@@ -31,7 +31,6 @@
   (define sender (send event get-sender))
   (thread
    (λ ()
-     (define start (current-inexact-milliseconds))
      (define fish
        (cond
          [(and (> (consumer-mgr:query-times "moyu" sender) 0)
@@ -40,7 +39,6 @@
          [else
           (consumer-mgr:use-func "moyu" sender)
           (send fishing-game fishing sender)]))
-
 
      (define (send-fish-image fish)
        (define ((draw-fish-image fish) moyu-bitmap)
@@ -115,11 +113,13 @@
          (add-message (face-from-id 190))
          (add-message "请稍等")
          (send subject send-message (send mcb build)))
+       (define start (current-inexact-milliseconds))
        (define path (make-moyu-image (draw-fish-image fish)))
        (message-receipt-promise-then
         (send subject send-message (new image-message% [path path]))
         (λ (_)
-          (set! action-delay (- (current-inexact-milliseconds) start)))))
+          (when fish
+            (set! action-delay (- (current-inexact-milliseconds) start))))))
      (match fish
        [(? number? _)
         (define mcb (new message-chain-builder%))
