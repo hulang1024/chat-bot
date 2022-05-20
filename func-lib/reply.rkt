@@ -25,8 +25,7 @@
 
     (define str (string-replace res "菲菲" bot-nickname #:all? #t))
 
-    (let ([len (string-length str)]
-          [res str])
+    (let ([len (string-length str)])
       (let loop ([i 0])
         (when (< i len)
           (define c (string-ref str i))
