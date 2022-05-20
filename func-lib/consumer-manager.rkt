@@ -8,7 +8,7 @@
          
 ; 用户 -> 功能今日使用次数hash
 (define user-func-times-hash (make-hash))
-(define today (current-date))
+(define last-date (current-date))
 ; 用户 -> 功能最后使用时间hash
 (define user-func-last-time-hash (make-hash))
 
@@ -16,10 +16,10 @@
   (define user-id (send user get-id))
 
   (define now (current-date))
-  (when (or (> (date-year today) (date-year now))
-            (> (date-year-day today) (date-year-day now)))
+  (when (or (> (date-year now) (date-year last-date))
+            (> (date-year-day now) (date-year-day last-date)))
     (set! user-func-times-hash (make-hash))
-    (set! today now))
+    (set! last-date now))
   
   (define func-times-hash (hash-ref! user-func-times-hash user-id (make-hash)))
   (define times (hash-ref func-times-hash func-id 0))
