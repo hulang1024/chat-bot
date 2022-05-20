@@ -22,6 +22,8 @@
 
 
 (define action-delay 10000)
+(define day-max-times 10)
+(define interval-seconds (* 60 5))
 (define fishing-game (new fishing-game%))
 
 (define (moyu event)
@@ -33,8 +35,8 @@
      (define fish
        (cond
          [(and (> (consumer-mgr:query-times "moyu" sender) 0)
-               (< (consumer-mgr:query-to-now "moyu" sender) (* 60 5))) 4]
-         [(> (consumer-mgr:query-times "moyu" sender) 10) 5]
+               (< (consumer-mgr:query-to-now "moyu" sender) interval-seconds)) 4]
+         [(> (consumer-mgr:query-times "moyu" sender) day-max-times) 5]
          [else
           (consumer-mgr:use-func "moyu" sender)
           (send fishing-game fishing sender)]))
@@ -107,8 +109,12 @@
             (define info (text/font "本次未摸到鱼。"
                                     16 "black" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
             (render-image info moyu-dc x base-y)]))
-       (when (> action-delay 1000)
-         (send subject send-message "请稍等"))
+       (when (> action-delay 2000)
+         (define mcb (new message-chain-builder%))
+         (define add-message (create-add-message mcb))
+         (add-message (face-from-id 190))
+         (add-message "请稍等")
+         (send subject send-message (send mcb build)))
        (define path (make-moyu-image (draw-fish-image fish)))
        (message-receipt-promise-then
         (send subject send-message (new image-message% [path path]))
@@ -123,8 +129,16 @@
         (case fish
           [(2) (add-message "放入鱼护失败，原因：鱼护满了。")]
           [(3) (add-message "鱼护满了。")]
-          [(4) (add-message "技能冷却5分钟中")]
-          [(5) (add-message "今日摸鱼次数(共10次)已用完了哦")])
+          [(4)
+           (define rest-seconds (inexact->exact (floor (- interval-seconds (consumer-mgr:query-to-now "moyu" sender)))))
+           (define rest-time-text "")
+           (when (>= rest-seconds 60)
+                 (set! rest-time-text (format "~a分" (floor (/ rest-seconds 60)))))
+           (when (> (remainder rest-seconds 60) 0)
+                 (set! rest-time-text (string-append rest-time-text (format "~a秒" (remainder rest-seconds 60)))))
+           (add-message (format "技能冷却中，~a钟后再试吧" rest-time-text))
+           (add-message (face-from-id 60))]
+          [(5) (add-message (format "今日摸鱼次数(共~a次)已用完了哦" day-max-times))])
         (send subject send-message (send mcb build))]
        [else
         (send-fish-image fish)])
