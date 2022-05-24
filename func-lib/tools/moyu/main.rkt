@@ -23,22 +23,24 @@
 
 (define action-delay 10000)
 (define day-max-times 10)
-(define interval-seconds (* 60 5))
 (define fishing-game (new fishing-game%))
+(define user-fish-hash (make-hash))
 
 (define (moyu event)
   (define subject (send event get-subject))
   (define sender (send event get-sender))
+  (define user-id (send sender get-id))
+  (define cooling-seconds (* 60 (if (s-fish? (hash-ref! user-fish-hash user-id #f)) 5 2)))
   (thread
    (λ ()
      (define fish
        (cond
          [(and (> (consumer-mgr:query-times "moyu" sender) 0)
-               (< (consumer-mgr:query-to-now "moyu" sender) interval-seconds)) 4]
+               (< (consumer-mgr:query-to-now "moyu" sender) cooling-seconds)) 4]
          [(> (consumer-mgr:query-times "moyu" sender) day-max-times) 5]
          [else
-          (consumer-mgr:use-func "moyu" sender)
           (send fishing-game fishing sender)]))
+     (hash-set! user-fish-hash user-id fish)
 
      (define (send-fish-image fish)
        (define ((draw-fish-image fish) moyu-bitmap)
@@ -118,19 +120,20 @@
        (message-receipt-promise-then
         (send subject send-message (new image-message% [path path]))
         (λ (_)
+          (consumer-mgr:use-func "moyu" sender)
           (when fish
             (set! action-delay (- (current-inexact-milliseconds) start))))))
      (match fish
        [(? number? _)
         (define mcb (new message-chain-builder%))
         (define add-message (create-add-message mcb))
-        (add-message (new at% [target (send sender get-id)]))
+        (add-message (new at% [target user-id]))
         (add-message " ")
         (case fish
           [(2) (add-message "放入鱼护失败，原因：鱼护满了。")]
           [(3) (add-message "鱼护满了。")]
           [(4)
-           (define rest-seconds (inexact->exact (floor (- interval-seconds (consumer-mgr:query-to-now "moyu" sender)))))
+           (define rest-seconds (inexact->exact (floor (- cooling-seconds (consumer-mgr:query-to-now "moyu" sender)))))
            (define rest-time-text "")
            (when (>= rest-seconds 60)
                  (set! rest-time-text (format "~a分" (floor (/ rest-seconds 60)))))
