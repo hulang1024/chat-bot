@@ -15,7 +15,8 @@
          "tools/dice.rkt"
          "tools/test-speed.rkt"
          "tools/remind/main.rkt"
-         "tools/moyu/main.rkt")
+         "tools/moyu/main.rkt"
+         "tools/holiday.rkt")
 
 (provide handle-message)
 
@@ -113,6 +114,8 @@
        (moyu-ranking 'weight event add-message)]
       [(list "摸鱼" "帮助")
        (moyu-help event add-message)]
+      [(list "节假日")
+       (get-holiday-text add-message)]
       
       [(list "笑话")
        (get-joke add-message)]
