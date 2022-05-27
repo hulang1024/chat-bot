@@ -205,9 +205,11 @@
       [ret-date
        (define message (send event get-message))
        (define message-string (send message content-to-string))
-       (define content-string (string-trim
-                               (substring message-string
-                                          (tagged-word/text-start (first content)))))
+       (define content-string (if (null? content)
+                                  ""
+                                  (string-trim
+                                   (substring message-string
+                                              (tagged-word/text-start (first content))))))
        (list event
              (s-remind (remind-mgr:generate-id)
                        (date->seconds ret-date)
