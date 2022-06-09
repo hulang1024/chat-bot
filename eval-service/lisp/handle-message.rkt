@@ -37,19 +37,13 @@
 (define (execute-program subject sender source-message add-message expr has-quote-reply? [quiet-fail? #f])
   (define api-result (eval-program expr "global" sender))
   (cond
-    [(send api-result ok?)
-     (handle-api-result api-result
-                        expr
-                        subject
-                        source-message
-                        add-message
-                        has-quote-reply?
-                        quiet-fail?)]
     [(= (send api-result get-code) 404)
      (add-message "🎈")
      (add-message (send api-result get-error))
      (add-message "\n")
-     (lisp-eval-server:restart 0 add-message)]))
+     (lisp-eval-server:restart 0 add-message)]
+    [else
+     (handle-api-result api-result expr subject source-message add-message has-quote-reply? quiet-fail?)]))
 
 
 (define (handle-api-result api-result expr subject source-message add-message has-quote-reply? quiet-fail?)
