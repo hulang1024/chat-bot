@@ -33,7 +33,7 @@
                                 1000))
          (define fish-basket (fish-basket-mgr:get-fish-basket-by-user-id user-id))
          (when (not fish-basket)
-           (set! fish-basket (fish-basket-mgr:create-fish-basket user-id 60)))
+           (set! fish-basket (fish-basket-mgr:create-fish-basket user-id 600)))
          (cond
            [(send fish-basket full?) 2]
            [else

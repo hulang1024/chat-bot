@@ -1,10 +1,14 @@
 #lang racket
 (require "eval.rkt"
+         "config.rkt"
+         "../../config.rkt"
+         "../../chat/contact/message-send.rkt"
          "../../chat/message/main.rkt"
          "../../chat/contact/message-send.rkt")
 
 (provide handle-message
-         execute-program)
+         execute-program
+         lisp-eval-server:restart)
 
 
 (define (handle-message event add-message)
@@ -31,13 +35,21 @@
 
 
 (define (execute-program subject sender source-message add-message expr has-quote-reply? [quiet-fail? #f])
-  (handle-api-result (eval-program expr "global" sender)
-                     expr
-                     subject
-                     source-message
-                     add-message
-                     has-quote-reply?
-                     quiet-fail?))
+  (define api-result (eval-program expr "global" sender))
+  (cond
+    [(send api-result ok?)
+     (handle-api-result api-result
+                        expr
+                        subject
+                        source-message
+                        add-message
+                        has-quote-reply?
+                        quiet-fail?)]
+    [(= (send api-result get-code) 404)
+     (add-message "🎈")
+     (add-message (send api-result get-error))
+     (add-message "\n")
+     (lisp-eval-server:restart 0 add-message)]))
 
 
 (define (handle-api-result api-result expr subject source-message add-message has-quote-reply? quiet-fail?)
@@ -138,3 +150,11 @@
      (add-message "内存不够了")]
     [else
      (add-message error)]))
+
+
+(define (lisp-eval-server:restart sender-id add-message)
+  (when (or (= sender-id 0) (memq sender-id admin-ids))
+    (add-message (face-from-id 190))
+    (add-message "eval服务器重启中\n")
+    (define ok? (system restart-shell))
+    (add-message (if ok? "🦉重启成功" "重启失败"))))
