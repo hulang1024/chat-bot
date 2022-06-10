@@ -22,6 +22,7 @@
 
 
 (define action-delay 10000)
+(define last-moyu-time 0)
 (define day-max-times 10)
 (define fishing-game (new fishing-game%))
 (define user-fish-hash (make-hash))
@@ -30,7 +31,7 @@
   (define subject (send event get-subject))
   (define sender (send event get-sender))
   (define user-id (send sender get-id))
-  (define cooling-seconds (* 60 (if (s-fish? (hash-ref! user-fish-hash user-id #f)) 5 2)))
+  (define cooling-seconds (* 60 (if (s-fish? (hash-ref! user-fish-hash user-id #f)) 2 1)))
   (thread
    (λ ()
      (define fish
@@ -109,19 +110,22 @@
             (define info (text/font "本次未摸到鱼。"
                                     16 "black" "FZLanTingHeiS-R-GB" 'modern 'normal 'normal #f))
             (render-image info moyu-dc x base-y)]))
-       (when (> action-delay 2000)
+
+       (define start (current-inexact-milliseconds))
+       (when (or (> action-delay 2000)
+                 (> (- start last-moyu-time) 300000))
          (define mcb (new message-chain-builder%))
          (define add-message (create-add-message mcb))
          (add-message (face-from-id 190))
          (add-message "请稍等")
          (send subject send-message (send mcb build)))
-       (define start (current-inexact-milliseconds))
+       (set! last-moyu-time start)
        (define path (make-moyu-image (draw-fish-image fish)))
        (message-receipt-promise-then
         (send subject send-message (new image-message% [path path]))
         (λ (_)
           (consumer-mgr:use-func "moyu" sender)
-          (when fish
+          (when (s-fish? fish)
             (set! action-delay (- (current-inexact-milliseconds) start))))))
      (match fish
        [(? number? _)

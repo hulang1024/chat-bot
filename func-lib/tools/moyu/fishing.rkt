@@ -25,7 +25,7 @@
 
     (define/public (fishing user)
       (cond
-        [(= (random-integer 0 2) 0)
+        [(< (random-integer 0 3) 2)
          (define user-id (send user get-id))
          (define fish (list-random-ref (fish-mgr:get-fishes)))
          (define fish-weight (/ (random (inexact->exact (* (s-fish-weight-min fish) 1000))
