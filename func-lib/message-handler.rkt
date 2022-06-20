@@ -102,6 +102,8 @@
       
       [(list "摸鱼")
        (moyu event)]
+      [(list "钓鱼")
+       (moyu event #t)]
       [(list "我" "的" "鱼")
        (moyu-my-stat event)]
       [(list "清空" "我" "的" "鱼")

@@ -23,11 +23,11 @@
 
 (define action-delay 10000)
 (define last-moyu-time 0)
-(define day-max-times 10)
+(define day-max-times 20)
 (define fishing-game (new fishing-game%))
 (define user-fish-hash (make-hash))
 
-(define (moyu event)
+(define (moyu event [fishing-mode? #f])
   (define subject (send event get-subject))
   (define sender (send event get-sender))
   (define user-id (send sender get-id))
@@ -120,9 +120,25 @@
          (add-message "请稍等")
          (send subject send-message (send mcb build)))
        (set! last-moyu-time start)
-       (define path (make-moyu-image (draw-fish-image fish)))
+       (define mcb (new message-chain-builder%))
+       (define add-message (create-add-message mcb))
+       (cond
+         [fishing-mode?
+          (add-message (new at% [target user-id]))
+          (cond
+            [fish
+             (add-message (format " 钓到了一条~a公斤的 ~a。\n"
+                                  (~r (s-fished-fish-weight fish) #:precision 2)
+                                  (s-fish-name fish)))
+             (define fish-id (s-fish-id fish))
+             (define fish-image-path (get-fish-image-path-by-id fish-id))
+             (add-message (new image-message% [path fish-image-path]))]
+            [else
+             (add-message " 本次未钓到鱼。")])]
+         [else
+          (add-message (new image-message% [path (make-moyu-image (draw-fish-image fish))]))])
        (message-receipt-promise-then
-        (send subject send-message (new image-message% [path path]))
+        (send subject send-message (send mcb build))
         (λ (_)
           (consumer-mgr:use-func "moyu" sender)
           (when (s-fish? fish)
