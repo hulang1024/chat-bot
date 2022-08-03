@@ -4,7 +4,8 @@
          "../../config.rkt"
          "../../chat/contact/message-send.rkt"
          "../../chat/message/main.rkt"
-         "../../chat/contact/message-send.rkt")
+         "../../chat/contact/message-send.rkt"
+         "../../blocklist/main.rkt")
 
 (provide handle-message
          execute-program
@@ -35,8 +36,13 @@
 
 
 (define (execute-program subject sender source-message add-message expr has-quote-reply? [quiet-fail? #f])
-  (define api-result (eval-program expr "global" sender))
+  (define block? (blocklist:exists? (send sender get-id) 1))
+  (define api-result (and (not block?) (eval-program expr "global" sender)))
   (cond
+    [(false? api-result)
+     (add-message (face-from-id 117))
+     (add-message (new at% [target (send sender get-id)]))
+     (add-message " 你已加入黑名单")]
     [(= (send api-result get-code) 404)
      (add-message "🎈")
      (add-message (send api-result get-error))
@@ -93,7 +99,7 @@
        [(hash? exn-data)
         (error-handler expr exn-data error add-message)]
        [else (add-message error)])
-     #f]))
+     #t]))
 
 
 (define (output-length-good? output)

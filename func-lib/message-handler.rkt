@@ -5,6 +5,7 @@
          "../nlp/tagging.rkt"
          "../nlp/time.rkt"
          "../eval-service/lisp/main.rkt"
+         "../blocklist/main.rkt"
          "say-to-me.rkt"
          "reply.rkt"
          "tools/weather.rkt"
@@ -78,6 +79,10 @@
     (match text-words
       [(list (or "帮助" "菜单" "功能"))
        (add-message say-to-me)]
+
+      [(list (or "更新" "黑名单"))
+       (blocklist:reload-all)]
+
       [(list "测速")
        (test-speed event)]
       [(app query-weather-parse-args (? list? args))

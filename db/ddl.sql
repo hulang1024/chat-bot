@@ -43,3 +43,9 @@ create table moyu_fish_basket_fish (
    fish_weight float not null,
    add_at datetime not null
 );
+
+create table block_user (
+   id int not null,
+   type int not null,
+   add_at datetime not null
+);
