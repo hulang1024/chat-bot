@@ -13,6 +13,7 @@
 
 (define verbose-mode (make-parameter #f))
 (define debug-mode (make-parameter #f))
+(define notify-mode (make-parameter #f))
 
 (command-line #:once-each
               [("-v" "--verbose")
@@ -20,7 +21,13 @@
                (verbose-mode #t)]
               [("-d" "--debug")
                "调试日志"
-               (debug-mode #t)])
+               (debug-mode #t)]
+              [("--notify")
+               "登录成功通知管理员"
+               (notify-mode "admin")]
+              [("--notify-all")
+               "登录成功通知所有群"
+               (notify-mode "all")])
 
 (displayln "Started")
 
@@ -57,5 +64,5 @@
 (send bot login
       (λ ()
         (displayln "已连接到服务器:)")
-        (handle-login bot)
+        (handle-login bot (notify-mode))
         (dict-add-word bot-nickname)))

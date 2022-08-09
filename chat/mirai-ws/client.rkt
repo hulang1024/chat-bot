@@ -43,10 +43,8 @@
                (on-message-channel-data data)]
               ; 请求响应
               [else
-               (match-define (hash-table ('code code) ('msg msg)) data)
-               (define response (new command-response% [code code] [msg msg]))
+               (define response (new command-response% [data data]))
                (command-response-promise-resolve syncId response)
                (when debug-mode
-                 (when (non-empty-string? msg)
-                   (printf "server msg: ~a\n" msg)))]))
+                 (printf "<- ~a\n" (jsexpr->string data)))]))
           (loop)))))))

@@ -16,7 +16,8 @@
     (define/public (then proc)
       (if resolve?
           (proc result)
-          (set! then-procs (append then-procs (cons proc null)))))
+          (set! then-procs (append then-procs (cons proc null))))
+      this)
 
     (define/public (resolve result)
       (when (not resolve?)
@@ -44,8 +45,10 @@
   (class object%
     (super-new)
 
-    (init-field code msg)
+    (init-field data)
 
-    (define/public (get-code) code)
-    (define/public (get-msg) msg)
-    (define/public (ok?) (= code 0))))
+    (define/public (get-data) data)
+    (define/public (ok?)
+      (if (hash-has-key? data 'code)
+          (hash-ref data 'code)
+          #t))))
