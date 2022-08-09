@@ -5,7 +5,8 @@
          "../../chat/contact/message-send.rkt"
          "../../chat/message/main.rkt"
          "../../chat/contact/message-send.rkt"
-         "../../blocklist/main.rkt")
+         "../../blocklist/main.rkt"
+         "command.rkt")
 
 (provide handle-message
          execute-program
@@ -49,10 +50,10 @@
      (add-message "\n")
      (lisp-eval-server:restart 0 add-message)]
     [else
-     (handle-api-result api-result expr subject source-message add-message has-quote-reply? quiet-fail?)]))
+     (handle-api-result api-result expr subject sender source-message add-message has-quote-reply? quiet-fail?)]))
 
 
-(define (handle-api-result api-result expr subject source-message add-message has-quote-reply? quiet-fail?)
+(define (handle-api-result api-result expr subject sender source-message add-message has-quote-reply? quiet-fail?)
   (define ok? (send api-result ok?))
   (define output (send api-result get-output))
   (define length-good? (if ok? (output-length-good? output) #f))
@@ -73,7 +74,9 @@
                ["audio" (new voice-message%
                              [path (hash-ref item 'path)]
                              [url (hash-ref item 'url)])]
-               [else (new mirai-code-message% [code (hash-ref item 'content)])])))
+               ["command" (handle-command sender item)]
+               ["text" (new mirai-code-message% [code (hash-ref item 'content)])]
+               [else ""])))
           items))
        (when (and source-message has-quote-reply?)
          (add-message (make-quote-reply source-message)))
@@ -119,7 +122,8 @@
        ["image"
         (set! image-count (+ image-count 1))]
        ["audio"
-        (set! audio-count (+ audio-count 1))]))
+        (set! audio-count (+ audio-count 1))]
+       [else (void)]))
    output)
   (and (< text-line-count text-line-max)
        (< image-count image-max)

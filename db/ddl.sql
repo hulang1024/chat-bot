@@ -44,8 +44,16 @@ create table moyu_fish_basket_fish (
    add_at datetime not null
 );
 
+-- 黑名单用户
 create table block_user (
    id int not null,
    type int not null,
+   add_at datetime not null
+);
+
+-- 启动代码
+create table boot_code (
+   user_id int not null,
+   code text not null,
    add_at datetime not null
 );
