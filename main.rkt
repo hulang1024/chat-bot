@@ -4,6 +4,7 @@
          "config.rkt"
          "chat/event/message-event.rkt"
          "chat/bot.rkt"
+         "chat/web-server.rkt"
          "chat/message/main.rkt"
          "eval-service/main.rkt"
          "func-lib/message-handler.rkt"
@@ -65,4 +66,5 @@
       (λ ()
         (displayln "已连接到服务器:)")
         (handle-login bot (notify-mode))
-        (dict-add-word bot-nickname)))
+        (dict-add-word bot-nickname)
+        (init-web-server bot)))
